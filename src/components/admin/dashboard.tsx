@@ -8,10 +8,13 @@ import { actions, STATUS_LABELS, useAppState, type PipelineStatus } from "@/lib/
 import { useAnalyses } from "@/lib/use-analyses";
 import { US_STATES } from "@/lib/us-states";
 import { LocationPicker } from "./location-picker";
+import { FitMeter, isRecommended, RecommendationBadge } from "./recommendation";
 import { VerdictBadge } from "./verdict";
 
-const FILTERS: Array<{ id: "all" | Verdict; label: string }> = [
+type Filter = "all" | "picks" | Verdict;
+const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: "all", label: "All" },
+  { id: "picks", label: "Recommended" },
   { id: "bid-ready", label: "Bid-ready" },
   { id: "qualified", label: "Qualified" },
   { id: "investigate", label: "Investigate" },
@@ -21,16 +24,20 @@ const FILTERS: Array<{ id: "all" | Verdict; label: string }> = [
 export function Dashboard() {
   const state = useAppState();
   const view = useAnalyses(state);
-  const [filter, setFilter] = useState<"all" | Verdict>("all");
+  const [filter, setFilter] = useState<Filter>("all");
   const [editingArea, setEditingArea] = useState(false);
 
   const itemsById = useMemo(() => new Map((state?.items ?? []).map((i) => [i.opportunity.id, i])), [state]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: view.ordered.length };
-    for (const a of view.ordered) c[a.verdict] = (c[a.verdict] ?? 0) + 1;
+    for (const a of view.ordered) {
+      c[a.verdict] = (c[a.verdict] ?? 0) + 1;
+      if (isRecommended(a.recommendation)) c.picks = (c.picks ?? 0) + 1;
+    }
     return c;
   }, [view.ordered]);
-  const rows = view.ordered.filter((a) => filter === "all" || a.verdict === filter);
+  const picks = useMemo(() => view.ordered.filter((a) => isRecommended(a.recommendation)).slice(0, 4), [view.ordered]);
+  const rows = view.ordered.filter((a) => (filter === "all" ? true : filter === "picks" ? isRecommended(a.recommendation) : a.verdict === filter));
 
   if (!state) return <p className="text-sm text-muted">Loading your pipeline…</p>;
 
@@ -45,12 +52,12 @@ export function Dashboard() {
   return (
     <>
       <PageHeader
-        title="Opportunity pipeline"
-        subtitle="Ranked by verdict, then by expected profit discounted for payment delay and the cash you must put up first. Nothing is recommended until the three hard rules are proven."
+        title="Your bids"
+        subtitle="Ranked by what is proven, then by how well each listing fits your business and how much it earns for the cash and waiting it costs. Nothing is recommended until the three hard rules are proven."
         actions={
           <>
-            <Link href="/admin/discover" className="rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium hover:bg-surface-2">
-              Discover
+            <Link href="/admin/scout" className="rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-medium hover:bg-surface-2">
+              Find bids
             </Link>
             <Link href="/admin/new" className="rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-ink hover:opacity-90">
               Add opportunity
@@ -74,6 +81,35 @@ export function Dashboard() {
           </div>
         )}
       </Card>
+
+      {picks.length > 0 && (
+        <section aria-label="Recommended bids" className="mb-6">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted">Best bids for your business</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {picks.map((a) => {
+              const o = itemsById.get(a.opportunityId)?.opportunity;
+              if (!o) return null;
+              return (
+                <Link key={a.opportunityId} href={`/admin/opportunities/${encodeURIComponent(o.id)}/bid`} className="group block rounded-[var(--radius-card)] border border-line bg-surface p-4 transition hover:border-accent">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium group-hover:text-accent">{o.title}</p>
+                    <RecommendationBadge recommendation={a.recommendation} />
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {o.agency || "Unknown agency"} · {[o.location.city, o.location.state].filter(Boolean).join(", ") || "location not stated"} · due {fmtDate(o.dueDate)}
+                  </p>
+                  <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div><dt className="text-muted">Exp. profit</dt><dd className="text-sm font-semibold tabular-nums">{fmtUsd(a.expectedProfitUsd)}</dd></div>
+                    <div><dt className="text-muted">Win chance</dt><dd className="text-sm font-semibold tabular-nums">{fmtPct(a.winProbability.value)}</dd></div>
+                    <div><dt className="text-muted">Fit</dt><dd className="flex justify-center pt-1"><FitMeter fit={a.fit} /></dd></div>
+                  </dl>
+                  <p className="mt-3 text-xs font-medium text-accent">Open the bid workspace →</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="Capital available" value={fmtUsd(state.settings.availableCapitalUsd)} sub="Hard ceiling for any deal" />
@@ -123,11 +159,12 @@ export function Dashboard() {
           {view.error && <Notice tone="fail" className="mb-3">{view.error}</Notice>}
 
           <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line bg-surface">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="border-b border-line bg-surface-2 text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="px-4 py-3">Opportunity</th>
                   <th className="px-3 py-3">Verdict</th>
+                  <th className="px-3 py-3">Fit</th>
                   <th className="px-3 py-3 text-right">Exp. profit</th>
                   <th className="px-3 py-3 text-right">Win chance</th>
                   <th className="px-3 py-3 text-right">Cash first</th>
@@ -153,8 +190,12 @@ export function Dashboard() {
                         {!o.provenance.verified && <Badge className="mt-1.5">Unverified listing</Badge>}
                       </td>
                       <td className="px-3 py-3">
-                        <VerdictBadge verdict={a.verdict} />
+                        <div className="flex flex-col items-start gap-1">
+                          <VerdictBadge verdict={a.verdict} />
+                          <RecommendationBadge recommendation={a.recommendation} />
+                        </div>
                       </td>
+                      <td className="px-3 py-3"><FitMeter fit={a.fit} /></td>
                       <td className="px-3 py-3 text-right tabular-nums">{fmtUsd(a.expectedProfitUsd)}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{fmtPct(a.winProbability.value)}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{a.cash ? fmtUsd(a.cash.peakCashRequiredUsd) : "—"}</td>
@@ -177,7 +218,7 @@ export function Dashboard() {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted">
                       Nothing in this filter.
                     </td>
                   </tr>

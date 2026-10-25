@@ -69,3 +69,16 @@ export const blankSub = (): Subcontractor => ({
   willingToSubcontract: "unknown",
   notes: "",
 });
+
+/** A directory entry for a company found by research. Everything beyond what the source states stays unconfirmed. */
+export function subFromResearch(p: { name: string; services: string[]; coverage: string[]; contact?: string; notes: string; similar?: Array<{ description: string; year: number | null }> }): Subcontractor {
+  return {
+    ...blankSub(),
+    name: p.name.trim(),
+    contact: p.contact?.trim() ?? "",
+    services: p.services.map((s) => s.trim().toLowerCase()).filter(Boolean),
+    coverage: p.coverage.map((s) => s.trim()).filter(Boolean),
+    similarProjects: (p.similar ?? []).map((x) => ({ description: x.description, year: x.year, referenceVerified: false })),
+    notes: p.notes,
+  };
+}

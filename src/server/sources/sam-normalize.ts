@@ -74,6 +74,8 @@ export function normalizeSolicitation(r: SamRecord, checkedOn: string): Opportun
     dueDate: day(r.responseDeadLine),
     sourceUrl: r.uiLink ?? `https://sam.gov/opp/${r.noticeId}/view`,
     documents: (r.resourceLinks ?? []).map((url, i) => ({ label: `Attachment ${i + 1}`, url })),
+    naics: /^\d{2,6}$/.test(naics) ? naics : null,
+    level: "federal",
     terms: newTerms({ setAside, evidence: { setAside: [setAsideNote] } }),
     provenance: { verified: false, checkedOn, note: "Imported from the SAM.gov API. Dates and set-aside come from SAM.gov; every other term is unknown until the documents are read." },
   });

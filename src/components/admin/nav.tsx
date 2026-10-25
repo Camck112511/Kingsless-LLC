@@ -6,8 +6,8 @@ import { logout } from "@/lib/api";
 import { cn } from "@/components/ui";
 
 const links = [
-  { href: "/admin", label: "Pipeline" },
-  { href: "/admin/discover", label: "Discover" },
+  { href: "/admin", label: "My bids" },
+  { href: "/admin/scout", label: "Find bids" },
   { href: "/admin/new", label: "Add" },
   { href: "/admin/calculator", label: "Calculator" },
   { href: "/admin/subcontractors", label: "Subcontractors" },

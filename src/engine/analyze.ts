@@ -10,6 +10,7 @@
  * PROTECTED engine file.
  */
 import { ENGINE_VERSION, RULES, VERDICT_TIER } from "./config";
+import { recommend, scoreFit } from "./fit";
 import {
   deadlineGate,
   financingGate,
@@ -102,6 +103,8 @@ export function analyze(item: AnalyzeItem, world: World): Analysis {
     daysToDeadline,
   });
 
+  const fit = scoreFit(opp, settings, today);
+
   const basePricing = ev.base.pricing;
   const expectedProfitUsd = basePricing ? round2(win.value * basePricing.profitBeforeTaxUsd - settings.bidPrepCostUsd) : null;
   const cash = ev.base.cash;
@@ -142,6 +145,8 @@ export function analyze(item: AnalyzeItem, world: World): Analysis {
     expectedProfitUsd,
     daysToDeadline,
     rank: { tier: VERDICT_TIER[verdict], score },
+    fit,
+    recommendation: recommend(verdict, verdictReason, fit),
     candidates,
   };
 }
@@ -181,16 +186,24 @@ function nextStepsFor(verdict: Verdict, gates: Gate[], basis: Analysis["subPrice
   }
 }
 
-/** Analyze many items and sort: verdict tier, then rank score (best first), then soonest due date. */
+/** Rank score scaled by business fit (0.5x to 1.5x). With no targets set, fit is ignored (1x). */
+const fitWeighted = (a: Analysis): number | null =>
+  a.rank.score === null ? null : a.rank.score * (a.fit.configured ? RULES.fit.rankFloor + a.fit.score / 100 : 1);
+
+/**
+ * Analyze many items and sort: verdict tier, then fit-weighted rank score (best first), then business fit for items
+ * whose economics are not computable yet, then soonest due date.
+ */
 export function analyzeAll(items: AnalyzeItem[], world: World): Analysis[] {
   const dueOf = new Map(items.map((i) => [i.opportunity.id, i.opportunity.dueDate ?? "9999-12-31"]));
   return items.map((i) => analyze(i, world)).sort((a, b) => {
     if (a.rank.tier !== b.rank.tier) return a.rank.tier - b.rank.tier;
-    const sa = a.rank.score;
-    const sb = b.rank.score;
+    const sa = fitWeighted(a);
+    const sb = fitWeighted(b);
     if (sa !== null && sb !== null && sa !== sb) return sb - sa;
     if (sa !== null && sb === null) return -1;
     if (sa === null && sb !== null) return 1;
+    if (sa === null && sb === null && a.fit.configured && a.fit.score !== b.fit.score) return b.fit.score - a.fit.score;
     return (dueOf.get(a.opportunityId) ?? "").localeCompare(dueOf.get(b.opportunityId) ?? "");
   });
 }

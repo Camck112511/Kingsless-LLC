@@ -1,5 +1,5 @@
 /**
- * Outreach and bid drafts. Everything here is a DRAFT for human review: the app has no ability to send anything.
+ * Outreach and bid drafts. Everything here is a DRAFT for human review: the app never sends these messages for you. (The one thing the console can email is the final bid packet, from the bid workspace, after a final check and a typed confirmation.)
  * The two scripts the owner specified are reproduced word for word, with only the bracketed fields filled in and
  * extra lines added for requirements that apply to this particular solicitation.
  *
@@ -264,8 +264,8 @@ export function generateScripts(opp: Opportunity, analysis: Analysis, inputs: In
   return {
     status: "draft",
     banner: hardGateOpen
-      ? `DRAFT: only the procurement inquiry is available. Subcontractor outreach stays locked until the solicitation confirms subcontracting is allowed and you can qualify as prime. This app never sends messages.${days}`
-      : `DRAFTS: review and edit before sending. This app never sends messages.${days}`,
+      ? `DRAFT: only the procurement inquiry is available. Subcontractor outreach stays locked until the solicitation confirms subcontracting is allowed and you can qualify as prime. This app never sends these messages for you.${days}`
+      : `DRAFTS: review and edit before sending. This app never sends these messages for you.${days}`,
     scripts: hardGateOpen ? [inquiry] : [quoteRequest, inquiry, sow, bid, call],
   };
 }

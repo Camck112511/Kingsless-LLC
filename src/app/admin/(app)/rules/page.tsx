@@ -35,6 +35,19 @@ export default async function RulesPage() {
           <dl className="space-y-2 text-sm">{r.assumptions.map((a) => <div key={a.label}><dt className="font-medium">{a.label}</dt><dd className="text-muted">{a.value}</dd></div>)}</dl>
         </Card>
         <Card>
+          <h2 className="mb-2 text-base font-semibold">Fit and recommendations</h2>
+          <p className="text-sm text-muted">{r.fit.summary}</p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {r.fit.factors.map((f) => (
+              <li key={f.label} className="flex justify-between gap-4 border-b border-line/60 pb-2">
+                <span><span className="font-medium">{f.label}</span><span className="block text-xs text-muted">{f.rule}</span></span>
+                <span className="tabular-nums text-muted">{f.weight} pts</span>
+              </li>
+            ))}
+          </ul>
+          <dl className="mt-4 space-y-2 text-sm">{r.recommendations.map((v) => <div key={v.id}><dt className="inline font-medium">{v.label}: </dt><dd className="inline text-muted">{v.meaning}</dd></div>)}</dl>
+        </Card>
+        <Card>
           <h2 className="mb-2 text-base font-semibold">Ranking</h2>
           <p className="text-sm text-muted">{r.ranking}</p>
           <h2 className="mb-2 mt-5 text-base font-semibold">Win probability</h2>

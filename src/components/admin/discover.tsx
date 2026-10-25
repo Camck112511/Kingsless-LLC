@@ -7,7 +7,7 @@ import { actions, useAppState } from "@/lib/store";
 import { US_STATES } from "@/lib/us-states";
 import type { DiscoveryResult } from "@/server/sources/types";
 
-export function Discover() {
+export function Discover({ embedded = false }: { embedded?: boolean }) {
   const state = useAppState();
   const [kind, setKind] = useState<"solicitations" | "awards">("solicitations");
   const [keyword, setKeyword] = useState("");
@@ -38,7 +38,11 @@ export function Discover() {
 
   return (
     <>
-      <PageHeader title="Discover" subtitle="Live federal opportunities from SAM.gov (official source). Each search is one API request, so searches only run when you press the button." />
+      {embedded ? (
+        <p className="mb-4 text-sm text-muted">Search SAM.gov yourself, with your own words and codes. Each search is one API request, so it only runs when you press the button.</p>
+      ) : (
+        <PageHeader title="Discover" subtitle="Live federal opportunities from SAM.gov (official source). Each search is one API request, so searches only run when you press the button." />
+      )}
       <form onSubmit={run} className="mb-6">
         <Card>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

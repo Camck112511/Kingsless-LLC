@@ -13,7 +13,18 @@
 export type Tri = "yes" | "no" | "unknown";
 export type GateStatus = "pass" | "fail" | "unknown";
 
-export type SourceId = "sam.gov" | "fort-worth-bonfire" | "lamp-texas" | "texas-esbd" | "manual";
+export type SourceId =
+  | "sam.gov"
+  | "fort-worth-bonfire"
+  | "lamp-texas"
+  | "texas-esbd"
+  | "web" // found by the AI web scout
+  | "feed" // an RSS / Atom bid feed you subscribed to
+  | "url-import" // a listing page you pointed the console at
+  | "manual";
+
+/** Who is buying. Federal awards need a SAM.gov registration; the rest follow their own portals' rules. */
+export type BuyerLevel = "federal" | "state" | "local" | "other";
 
 export type SetAside =
   | "none"
@@ -99,6 +110,10 @@ export interface Opportunity {
   valueEstimate: { low: number | null; high: number | null };
   sourceUrl: string;
   documents: DocLink[];
+  /** NAICS code (2 to 6 digits) when the listing states one. */
+  naics?: string | null;
+  /** Federal / state / local buyer when known. SAM.gov listings are always federal. */
+  level?: BuyerLevel | null;
   terms: Terms;
   provenance: {
     /** true only if someone confirmed the facts against the official portal. */
@@ -139,9 +154,34 @@ export interface LocationMatch {
   question: string | null;
 }
 
+/**
+ * What kind of work is worth your time. Contracts are scored against this ("fit") and the best matches are
+ * recommended first. Nothing here ever overrides a gate: a perfect fit that fails a hard rule is still rejected.
+ */
+export interface Targeting {
+  /** NAICS codes or prefixes you want, e.g. "238910" or "5617". */
+  naics: string[];
+  /** Words that describe work you want, e.g. "grading", "janitorial". */
+  keywords: string[];
+  /** Words that describe work you never want; a match makes the listing "not recommended". */
+  avoidKeywords: string[];
+  /** Service categories you want. Empty = any. */
+  categories: ServiceCategory[];
+  minValueUsd: number | null;
+  maxValueUsd: number | null;
+  /** Prefer listings due within this many days (null = no preference). */
+  maxDaysUntilDue: number | null;
+  /** Longest performance period you will take on (null = no limit). */
+  maxDurationDays: number | null;
+  /** RSS / Atom bid-notice feeds the Scout should read. */
+  feeds: string[];
+}
+
 export interface Settings {
   /** Where you want to work. */
   serviceArea: ServiceArea;
+  /** The kinds of contracts you want. */
+  targeting: Targeting;
   /** Cash you can actually put at risk. Hard ceiling for the financing gate. */
   availableCapitalUsd: number;
   /** Net margin (before tax) at or above which a bid clears. Also sets the walk-away price. */
@@ -159,7 +199,25 @@ export interface Settings {
   /** Out-of-pocket dollars to prepare and submit one bid (lost if you lose). */
   bidPrepCostUsd: number;
   profile: CompanyProfile;
-  contact: { companyName: string; contactName: string; email: string; phone: string };
+  contact: Contact;
+}
+
+/** Who signs and who is called. The optional fields fill the bid documents; blanks become visible "to complete" markers. */
+export interface Contact {
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  /** Signer's title, e.g. "Owner". */
+  title?: string;
+  /** Mailing address as it should appear on bid documents. */
+  address?: string;
+  website?: string;
+  /** SAM.gov Unique Entity ID and CAGE code, when registered. */
+  uei?: string;
+  cage?: string;
+  /** A short paragraph about what the company does, used in the qualifications document. */
+  capability?: string;
 }
 
 /* ----------------------------- Economics ------------------------------ */
@@ -247,6 +305,40 @@ export interface Gate {
   questions: string[];
   /** For failures that a cheap action would clear (register, buy insurance...). */
   fixableBy: string | null;
+}
+
+export type FitFactorId = "service" | "credentials" | "size" | "timeframe" | "location";
+export type FitOutcome = "match" | "partial" | "unknown" | "miss";
+
+export interface FitFactor {
+  id: FitFactorId;
+  label: string;
+  /** Points available / earned (out of the factor's weight). */
+  max: number;
+  earned: number;
+  outcome: FitOutcome;
+  detail: string;
+}
+
+/** How well a listing matches YOUR business (services, licences, size, timing, place). Advisory: never changes a gate. */
+export interface Fit {
+  /** 0-100. */
+  score: number;
+  /** False until at least one target (services / size / place) is set in Settings. */
+  configured: boolean;
+  /** The listing matches a word on your avoid list. */
+  excluded: boolean;
+  factors: FitFactor[];
+  summary: string;
+}
+
+export type RecommendationTier = "top-pick" | "recommended" | "consider" | "research-first" | "not-recommended";
+
+export interface Recommendation {
+  tier: RecommendationTier;
+  headline: string;
+  /** Why it was placed in this tier. */
+  reasons: string[];
 }
 
 export type GateId =
@@ -348,5 +440,100 @@ export interface Analysis {
   expectedProfitUsd: number | null;
   daysToDeadline: number | null;
   rank: { tier: number; score: number | null };
+  fit: Fit;
+  recommendation: Recommendation;
   candidates: Candidate[];
+}
+
+/* --------------------------------- Bids --------------------------------- */
+
+export type SubmissionMethod = "console-email" | "portal" | "own-email" | "mail-or-hand";
+
+/** What the owner decided and typed while preparing one bid. The bid PRICE lives in Inputs.plannedBidUsd. */
+export interface BidPrep {
+  /** Days the offer stays open after the due date. */
+  validityDays: number;
+  /** Owner-written technical approach. Blank = use the generated draft. */
+  approach: string;
+  signerName: string;
+  signerTitle: string;
+  /** Where the solicitation says to email bids, if it does. */
+  submissionEmail: string;
+  /**
+   * The owner confirmed they read the documents. Holds the fingerprint of the documents at that moment, so any later change
+   * (price, wording, company details) makes the confirmation void until they read again. "" = not reviewed.
+   */
+  reviewedDigest: string;
+}
+
+export interface Submission {
+  submittedOn: string;
+  method: SubmissionMethod;
+  /** Portal confirmation number, email id, tracking number... */
+  confirmation: string;
+  priceUsd: number | null;
+  note: string;
+}
+
+export interface BidOutcome {
+  result: "won" | "lost" | "no-award" | "withdrawn";
+  decidedOn: string;
+  awardUsd: number | null;
+  note: string;
+}
+
+export interface BidRecord {
+  prep: BidPrep;
+  submission: Submission | null;
+  outcome: BidOutcome | null;
+}
+
+export type StepStatus = "done" | "todo" | "blocked" | "locked";
+
+export interface WorkflowStep {
+  id: "fit" | "prove" | "quotes" | "price" | "docs" | "check" | "submit" | "result" | "win";
+  title: string;
+  /** One or two plain sentences: why this step exists. */
+  why: string;
+  status: StepStatus;
+  /** What is done, or what is missing, right now. */
+  lines: string[];
+}
+
+export interface PreflightCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  /** A failed blocking check stops the console from sending the bid. */
+  blocking: boolean;
+  detail: string;
+}
+
+/** A document in the bid package, as structured content. The server renders it to Word and PDF. */
+export type DocBlock =
+  | { t: "h"; text: string; level: 1 | 2 | 3 }
+  | { t: "p"; text: string }
+  | { t: "bullets"; items: string[] }
+  | { t: "table"; head: string[]; rows: string[][]; widths?: number[] }
+  | { t: "kv"; rows: Array<[string, string]> }
+  | { t: "sig"; lines: string[] }
+  | { t: "note"; text: string };
+
+export interface BidDocument {
+  id: string;
+  filename: string;
+  title: string;
+  /** "agency" documents go to the buyer. "internal" ones never leave the company. */
+  audience: "agency" | "internal" | "subcontractor";
+  /** One short sentence for the owner: what this document is and why it is in the package. */
+  purpose: string;
+  blocks: DocBlock[];
+}
+
+export interface BidPackage {
+  documents: BidDocument[];
+  /** Fingerprint of the documents that go to the agency. Changes whenever any of their words change. */
+  digest: string;
+  /** Things the owner still has to fill in, found in the agency documents. */
+  placeholders: string[];
 }

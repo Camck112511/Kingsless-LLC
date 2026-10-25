@@ -5,14 +5,24 @@ import { fmtDate, fmtPct, fmtUsd, safeUrl } from "@/components/format";
 import { Badge, Button, Card, CardTitle, Notice, Select, Textarea } from "@/components/ui";
 import { actions, STATUS_LABELS, useAppState, type PipelineStatus } from "@/lib/store";
 import { useAnalyses } from "@/lib/use-analyses";
+import type { Capabilities } from "@/server/views";
+import { MarketPanel } from "../market";
+import { FitPanel, RecommendationBadge } from "../recommendation";
 import { VerdictBadge } from "../verdict";
+import { AiReviewPanel } from "./ai-review";
 import { EconomicsPanel } from "./economics";
 import { GatesPanel } from "./gates";
 import { ScriptsPanel } from "./scripts";
 import { ShortlistPanel } from "./shortlist";
 import { TermsPanel } from "./terms";
 
-export function OpportunityDetail({ id }: { id: string }) {
+/** A few distinctive words from a title, for a records search. */
+function marketWords(title: string): string[] {
+  const stop = new Set(["services", "service", "and", "the", "for", "of", "to", "in", "at", "with", "contract", "program", "project", "annual", "county", "city"]);
+  return [...new Set(title.toLowerCase().match(/[a-z]{4,}/g) ?? [])].filter((w) => !stop.has(w)).slice(0, 3);
+}
+
+export function OpportunityDetail({ id, caps }: { id: string; caps: Capabilities }) {
   const state = useAppState();
   const router = useRouter();
   const view = useAnalyses(state, { onlyId: id, withScripts: true });
@@ -42,7 +52,15 @@ export function OpportunityDetail({ id }: { id: string }) {
               {safeUrl(o.sourceUrl) && <> · <a href={safeUrl(o.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-accent underline">Official listing ↗</a></>}
             </p>
           </div>
-          <div className="flex items-center gap-2">{a && <VerdictBadge verdict={a.verdict} />}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {a && <VerdictBadge verdict={a.verdict} />}
+            {a && <RecommendationBadge recommendation={a.recommendation} />}
+            {a && a.verdict !== "reject" && (
+              <Link href={`/admin/opportunities/${encodeURIComponent(id)}/bid`} className="rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-accent-ink hover:opacity-90">
+                Open bid workspace
+              </Link>
+            )}
+          </div>
         </div>
       </div>
 
@@ -92,8 +110,20 @@ export function OpportunityDetail({ id }: { id: string }) {
         <Card><p className="text-sm text-muted">{view.loading ? "Running the engine…" : "No analysis yet."}</p></Card>
       )}
 
+      {a && <FitPanel analysis={a} />}
+      <AiReviewPanel state={state} id={id} aiEnabled={caps.ai} />
       {a && <GatesPanel analysis={a} />}
       <EconomicsPanel item={item} analysis={a} />
+      <details className="rounded-[var(--radius-card)] border border-line bg-surface">
+        <summary className="cursor-pointer px-5 py-4 text-base font-semibold tracking-tight">What similar work has paid (federal records)</summary>
+        <div className="px-5 pb-5">
+          <MarketPanel
+            settings={state.settings}
+            initial={{ keywords: marketWords(o.title), naics: o.naics ? [o.naics] : [], state: o.location.state.length === 2 ? o.location.state.toUpperCase() : "" }}
+            onUseMedian={(usd) => actions.updateItem(id, { inputs: { ...item.inputs, marketPriceUsd: usd } })}
+          />
+        </div>
+      </details>
       <ShortlistPanel item={item} analysis={a} state={state} />
       <ScriptsPanel set={view.scripts[id]} />
       <TermsPanel opportunity={o} />

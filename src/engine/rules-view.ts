@@ -14,6 +14,8 @@ export interface RulesView {
   assumptions: Array<{ label: string; value: string }>;
   ranking: string;
   winProbability: string;
+  fit: { summary: string; factors: Array<{ label: string; weight: number; rule: string }> };
+  recommendations: Array<{ id: string; label: string; meaning: string }>;
   honesty: string[];
 }
 
@@ -54,7 +56,24 @@ export function describeRules(): RulesView {
       { label: "Sub terms when unknown (best case)", value: "Pay-when-paid, no deposit" },
       { label: "Set-aside subcontracting limit (when the clause is not pasted)", value: `${pct(RULES.setAsideSubcontractCap["other-services"])} services/supply, ${pct(RULES.setAsideSubcontractCap["construction-general"])} general construction, ${pct(RULES.setAsideSubcontractCap["construction-specialty"])} specialty trades (13 CFR 125.6; confirm in the solicitation)` },
     ],
-    ranking: `Within a verdict tier: expected profit ÷ (1 + days to first payment ÷ ${RULES.ranking.paymentHorizonDays}) ÷ (1 + peak cash ÷ available capital). Profit counts for less the later it arrives and the more cash it ties up.`,
+    ranking: `Within a verdict tier: expected profit ÷ (1 + days to first payment ÷ ${RULES.ranking.paymentHorizonDays}) ÷ (1 + peak cash ÷ available capital), then scaled by business fit (${RULES.fit.rankFloor}× for no fit up to ${RULES.fit.rankFloor + 1}× for a perfect fit; ignored until you set targets). Profit counts for less the later it arrives and the more cash it ties up.`,
+    fit: {
+      summary: `Fit scores a listing 0 to 100 against the work, size, timing, credentials and place you chose in Settings. At ${RULES.fit.topPick}+ a fully proven listing is a top pick; at ${RULES.fit.recommended}+ it is recommended; below that it only qualifies. Fit orders and words recommendations. It never turns a failed or unproven rule into a pass.`,
+      factors: [
+        { label: "Work you want", weight: RULES.fit.weights.service, rule: "Your NAICS codes, words and categories against the title, scope and code. A word on your avoid list rules the listing out." },
+        { label: "Licenses and credentials", weight: RULES.fit.weights.credentials, rule: "Required licenses, set-aside eligibility, past performance and years in business against your company profile." },
+        { label: "Contract size", weight: RULES.fit.weights.size, rule: "The stated value against your smallest and largest contract. Unstated value counts as unknown." },
+        { label: "Timing", weight: RULES.fit.weights.timeframe, rule: "Days to the due date against your minimum and preferred window, and the performance period against your limit." },
+        { label: "Where the work is", weight: RULES.fit.weights.location, rule: "The place of performance against your selected location." },
+      ],
+    },
+    recommendations: [
+      { id: "top-pick", label: "Top pick", meaning: "Every rule is proven and fit is strong (or a bid-ready listing when no targets are set)." },
+      { id: "recommended", label: "Recommended", meaning: "Every rule is proven and fit is good." },
+      { id: "consider", label: "Weaker fit", meaning: "Every rule is proven, but it does not match your targets well." },
+      { id: "research-first", label: "Research first", meaning: "A rule cannot be proven yet. Never a recommendation; fit only sets how soon to research it." },
+      { id: "not-recommended", label: "Not recommended", meaning: "A rule fails, or the listing is on your avoid list." },
+    ],
     winProbability: `Starts at ${pct(w.base)} and is multiplied by visible factors (past performance, price vs. market, firm quote, set-aside pool, rapid turnaround, time to prepare), bounded ${pct(w.floor)} to ${pct(w.ceiling)}. A heuristic for ranking, not a forecast.`,
     honesty: [
       "Unknown is never treated as pass.",

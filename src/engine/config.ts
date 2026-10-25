@@ -10,8 +10,11 @@ import type {
   Inputs,
   ServiceArea,
   ServiceCategory,
+  BidPrep,
+  BidRecord,
   Settings,
   SubTerms,
+  Targeting,
   Terms,
 } from "./types";
 
@@ -31,8 +34,22 @@ export const DEFAULT_PROFILE: CompanyProfile = {
 /** No restriction until the owner picks a location. */
 export const DEFAULT_SERVICE_AREA: ServiceArea = { scope: "anywhere", states: [], places: [] };
 
+/** Nothing targeted until the owner says what work to chase; recommendations then rely on gates alone. */
+export const DEFAULT_TARGETING: Targeting = {
+  naics: [],
+  keywords: [],
+  avoidKeywords: [],
+  categories: [],
+  minValueUsd: null,
+  maxValueUsd: null,
+  maxDaysUntilDue: null,
+  maxDurationDays: null,
+  feeds: [],
+};
+
 export const DEFAULT_SETTINGS: Settings = {
   serviceArea: DEFAULT_SERVICE_AREA,
+  targeting: DEFAULT_TARGETING,
   availableCapitalUsd: 300,
   walkAwayMargin: 0.1,
   targetMargin: 0.2,
@@ -45,6 +62,17 @@ export const DEFAULT_SETTINGS: Settings = {
   profile: DEFAULT_PROFILE,
   contact: { companyName: "Kingsless LLC", contactName: "", email: "", phone: "" },
 };
+
+export const DEFAULT_BID_PREP: BidPrep = {
+  validityDays: 90,
+  approach: "",
+  signerName: "",
+  signerTitle: "",
+  submissionEmail: "",
+  reviewedDigest: "",
+};
+
+export const emptyBid = (): BidRecord => ({ prep: { ...DEFAULT_BID_PREP }, submission: null, outcome: null });
 
 export const ZERO_COSTS: CostItems = {
   bondPremiumUsd: 0,
@@ -166,8 +194,24 @@ export const RULES = {
     shortFuseDays: 10,
   },
 
-  /** Ranking: score = expectedProfit / (1 + daysToFirstPayment / H) / (1 + peakCash / capital). */
+  /** Ranking: score = expectedProfit / (1 + daysToFirstPayment / H) / (1 + peakCash / capital), then scaled by business fit. */
   ranking: { paymentHorizonDays: 90 },
+
+  /**
+   * Business fit: how well a listing matches the services, credentials, size, timing and place the owner chose.
+   * Weights add to 100. A factor that cannot be assessed counts as "unknown" (partial credit), never as a match.
+   * Fit shapes the ORDER and the wording of recommendations; it never turns a failed or unproven gate into a pass.
+   */
+  fit: {
+    weights: { service: 35, credentials: 20, size: 15, timeframe: 15, location: 15 },
+    credit: { match: 1, partial: 0.6, unknown: 0.4, miss: 0 },
+    /** Fit at or above this is a "top pick" (when every gate passes). */
+    topPick: 70,
+    /** Fit at or above this is "recommended" (when every gate passes). */
+    recommended: 50,
+    /** Rank score is multiplied by (rankFloor + fit / 100): 0.5x for a 0-fit listing, 1.5x for a perfect one. */
+    rankFloor: 0.5,
+  },
 
   /** A quote older than this (days) is treated as expired when it has no explicit validity date. */
   quoteDefaultValidDays: 30,

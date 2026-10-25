@@ -51,3 +51,60 @@ export function NumberField({
     </div>
   );
 }
+
+/** A list of short values entered as chips: type and press Enter (or comma) to add, click a chip to remove it. */
+export function TagField({
+  value,
+  onChange,
+  placeholder,
+  normalize = (s) => s.trim(),
+  "aria-label": ariaLabel,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  /** Return "" to reject an entry. */
+  normalize?: (raw: string) => string;
+  "aria-label"?: string;
+}) {
+  const [draft, setDraft] = useState("");
+  const add = (raw: string) => {
+    const parts = raw.split(/[,\n]/).map(normalize).filter(Boolean);
+    if (parts.length === 0) return;
+    onChange([...value, ...parts.filter((p) => !value.some((v) => v.toLowerCase() === p.toLowerCase()))]);
+    setDraft("");
+  };
+  return (
+    <div className="rounded-lg border border-line bg-surface px-2 py-1.5 focus-within:border-accent">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {value.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(value.filter((x) => x !== v))}
+            aria-label={`Remove ${v}`}
+            className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent hover:opacity-80"
+          >
+            {v} <span aria-hidden>×</span>
+          </button>
+        ))}
+        <input
+          aria-label={ariaLabel}
+          value={draft}
+          placeholder={value.length === 0 ? placeholder : "Add another…"}
+          onChange={(e) => (e.target.value.includes(",") ? add(e.target.value) : setDraft(e.target.value))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              add(draft);
+            } else if (e.key === "Backspace" && draft === "" && value.length > 0) {
+              onChange(value.slice(0, -1));
+            }
+          }}
+          onBlur={() => add(draft)}
+          className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-sm text-ink placeholder:text-muted/70 focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}

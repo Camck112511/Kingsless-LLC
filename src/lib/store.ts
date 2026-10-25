@@ -7,8 +7,9 @@
  * PROTECTED. See AGENTS.project.md.
  */
 import { useSyncExternalStore } from "react";
-import { DEFAULT_INPUTS, DEFAULT_PROFILE, DEFAULT_SERVICE_AREA, DEFAULT_SETTINGS, TEST_CASE_INPUTS, TEST_CASE_OPPORTUNITIES } from "@/engine";
-import type { Inputs, Opportunity, Quote, Settings, Subcontractor } from "@/engine/types";
+import { emptyBid, DEFAULT_INPUTS, DEFAULT_PROFILE, DEFAULT_SERVICE_AREA, DEFAULT_SETTINGS, DEFAULT_TARGETING, TEST_CASE_INPUTS, TEST_CASE_OPPORTUNITIES } from "@/engine";
+import type { BidRecord, Inputs, Opportunity, Quote, Settings, Subcontractor } from "@/engine/types";
+import type { ReviewResult } from "@/server/ai/review";
 
 export type PipelineStatus = "new" | "watching" | "quotes-requested" | "approved" | "bid-submitted" | "won" | "lost" | "passed";
 
@@ -30,7 +31,13 @@ export interface PipelineItem {
   notes: string;
   addedAt: string;
   updatedAt: string;
+  /** Latest AI second opinion, kept so it survives navigation. Advisory only. */
+  aiReview?: ReviewResult | null;
+  /** Everything about the bid you are preparing: your wording, the submission, the result. */
+  bid?: BidRecord;
 }
+
+export const bidOf = (item: PipelineItem): BidRecord => item.bid ?? emptyBid();
 
 export interface AppState {
   version: 1;
@@ -58,6 +65,7 @@ function normalize(raw: Partial<AppState> | null | undefined): AppState {
       ...DEFAULT_SETTINGS,
       ...s,
       serviceArea: { ...DEFAULT_SERVICE_AREA, ...(s.serviceArea ?? {}) },
+      targeting: { ...DEFAULT_TARGETING, ...(s.targeting ?? {}) },
       profile: { ...DEFAULT_PROFILE, ...(s.profile ?? {}) },
       contact: { ...DEFAULT_SETTINGS.contact, ...(s.contact ?? {}) },
     },
@@ -141,6 +149,10 @@ export const actions = {
   removeItem(id: string) {
     const s = cur();
     commit({ ...s, items: s.items.filter((i) => i.opportunity.id !== id), quotes: s.quotes.filter((q) => q.opportunityId !== id) });
+  },
+  patchBid(id: string, change: (b: BidRecord) => BidRecord) {
+    const s = cur();
+    commit({ ...s, items: s.items.map((i) => (i.opportunity.id === id ? { ...i, bid: change(bidOf(i)), updatedAt: nowIso() } : i)) });
   },
   setSettings(settings: Settings) {
     commit({ ...cur(), settings });

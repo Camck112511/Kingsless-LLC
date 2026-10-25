@@ -3,12 +3,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { ServiceCategory, SourceId } from "@/engine/types";
 import { Button, Card, Field, Input, Notice, PageHeader, Select, Textarea } from "@/components/ui";
-import { extractApi } from "@/lib/api";
+import { extractApi, importUrlApi } from "@/lib/api";
 import { blankIntake, buildOpportunity, type IntakeForm } from "@/lib/intake";
 import { actions, useAppState } from "@/lib/store";
 
 const SOURCES: Array<[SourceId, string]> = [
-  ["manual", "Other / manual"], ["sam.gov", "SAM.gov"], ["fort-worth-bonfire", "City of Fort Worth (Bonfire)"], ["lamp-texas", "LAMP Texas"], ["texas-esbd", "Texas SmartBuy (ESBD)"],
+  ["manual", "Other / manual"], ["url-import", "A link I pasted"], ["sam.gov", "SAM.gov"], ["fort-worth-bonfire", "City of Fort Worth (Bonfire)"], ["lamp-texas", "LAMP Texas"], ["texas-esbd", "Texas SmartBuy (ESBD)"],
 ];
 const CATEGORIES: Array<[ServiceCategory, string]> = [
   ["unknown", "Not sure"], ["supply", "Supply / goods"], ["construction-general", "General construction"], ["construction-specialty", "Specialty trade"],
@@ -24,7 +24,31 @@ export function NewOpportunity() {
   const [useAi, setUseAi] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [link, setLink] = useState("");
+  const [reading, setReading] = useState(false);
+  const [readMsg, setReadMsg] = useState<{ tone: "pass" | "fail" | "unknown"; text: string } | null>(null);
   const set = (p: Partial<IntakeForm>) => setF((x) => ({ ...x, ...p }));
+
+  async function readLink() {
+    setReading(true);
+    setReadMsg(null);
+    const res = await importUrlApi(link.trim());
+    setReading(false);
+    if (!res.ok) return setReadMsg({ tone: "fail", text: res.error });
+    const d = res.data;
+    setF((x) => ({
+      ...x,
+      title: x.title || d.title.slice(0, 200),
+      sourceUrl: d.finalUrl,
+      solicitationNumber: x.solicitationNumber || d.hints.solicitationNumber,
+      dueDate: x.dueDate || d.hints.dueDate || "",
+    }));
+    setText(d.text);
+    setReadMsg({
+      tone: "unknown",
+      text: `Read ${d.text.length.toLocaleString()} characters${d.truncated ? " (long document, cut at the limit)" : ""}. Check the title, dates, place and category below: only what the page clearly states was filled in.${d.links.length ? ` The page links ${d.links.length} document(s), which are not read automatically: open the important ones and paste their text if they hold the terms.` : ""}`,
+    });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,7 +63,7 @@ export function NewOpportunity() {
       }
       terms = res.data.terms;
     }
-    const opp = buildOpportunity({ ...f, state: f.state || defaultState, scope: f.scope || text.slice(0, 600) }, terms);
+    const opp = buildOpportunity({ ...f, source: f.source === "manual" && link.trim() ? "url-import" : f.source, state: f.state || defaultState, scope: f.scope || text.slice(0, 600) }, terms);
     actions.addItems([opp]);
     router.push(`/admin/opportunities/${encodeURIComponent(opp.id)}`);
   }
@@ -48,9 +72,18 @@ export function NewOpportunity() {
     <>
       <PageHeader
         title="Add an opportunity"
-        subtitle="For listings the engine cannot fetch itself (Fort Worth's Bonfire portal, LAMP Texas, Texas SmartBuy, anything else). Always link the official listing, and paste the solicitation text so the engine can quote the clauses it relies on."
+        subtitle="For any listing you found yourself: read it from a link, or paste the text. The engine quotes the clauses it relies on, so always include the solicitation text."
       />
       <form onSubmit={submit} className="space-y-5">
+        <Card>
+          <Field label="Have a link? Read it for me" hint="A solicitation page or PDF on any public site. Pages that need a login, or that build themselves with JavaScript, cannot be read: paste the text below instead.">
+            <div className="flex flex-wrap gap-2">
+              <Input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" className="min-w-0 flex-1" aria-label="Link to read" />
+              <Button type="button" disabled={reading || link.trim().length < 8} onClick={() => void readLink()}>{reading ? "Reading…" : "Read the link"}</Button>
+            </div>
+          </Field>
+          {readMsg && <Notice tone={readMsg.tone} className="mt-3">{readMsg.text}</Notice>}
+        </Card>
         <Card>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Title *" className="lg:col-span-2"><Input required value={f.title} onChange={(e) => set({ title: e.target.value })} /></Field>

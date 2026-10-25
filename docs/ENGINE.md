@@ -103,6 +103,28 @@ Day 0 is the award. Costs at award go out first. The sub is paid on its terms (p
 **Expected profit** = win probability × profit if won − bid prep cost.
 **Win probability** is a transparent heuristic, not a forecast: base 15% × visible factors (past performance scored with no references ×0.4; price vs market ×1.3 / 1.0 / 0.6 / 0.3, unknown ×0.85; no firm quote ×0.9; set-aside ×1.3; rapid turnaround ×0.7; under 10 days ×0.85), bounded 1% to 60%. Calibrate it from your own results.
 
+## Business fit and recommendations
+
+Fit scores a listing 0 to 100 against the owner's own targets (Settings → *What work you want*, location, company profile). It never changes a gate:
+
+| Factor | Points | What it looks at |
+| --- | --- | --- |
+| Work you want | 35 | NAICS prefix, chosen categories, wanted words in the title and scope; a word on the avoid list excludes the listing |
+| Licenses and credentials | 20 | required licenses, set-aside eligibility, past performance, years in business |
+| Contract size | 15 | stated value against the smallest and largest contract wanted (unstated counts as unknown) |
+| Timing | 15 | days to the due date against the minimum and preferred window; performance period against the longest job accepted |
+| Where the work is | 15 | place of performance against the selected location |
+
+A factor that cannot be assessed earns partial "unknown" credit, never a match. Factors with nothing configured are left out and the score is taken over what remains. With no targets set the score is shown as "not set" and ignored in ranking.
+
+Recommendation tiers apply in this order: a failed gate or the avoid list is **not recommended**; an unproven gate is **research first** (fit only decides how soon); otherwise fit ≥ 70 is a **top pick**, ≥ 50 **recommended**, below that a **weaker fit**. With no targets set, a qualified listing is "recommended" and a bid-ready one a "top pick". Ranking multiplies the profit score by 0.5 + fit/100 when targets are set.
+
+## The bid workflow
+
+`src/engine/bid.ts` derives nine steps (fit, prove, quotes, price, docs, check, submit, result, win) from the analysis and the owner's bid record. `preflight()` is the final check: listing verified, every rule proven, firm quote from a confirmed subcontractor, due date not passed, price set and at or above the walk-away line, no blanks in the documents, documents read (the confirmation is a fingerprint of the documents, so any later edit voids it), plus a valid recipient and email setup for the console-send channel. For console email each is **blocking** and is re-run on the server; for portal, own-email or mail submissions they advise only, because recording what you did yourself is a record, not an action.
+
+`src/engine/bid-docs.ts` builds the documents as structured content. Facts come only from the listing, the profile and what the owner typed; anything missing becomes `[… – to complete]`. Agency documents never contain the subcontractor price, margin, cash position or walk-away price (a test enforces it).
+
 ## Subcontractor shortlist
 
 Per opportunity each candidate is checked for service match, geography, similar projects, verified license (if required), insurance ≥ required limit with certificate (if required), bonding (if required), confirmed capacity, a firm quote for this scope, and confirmed willingness to subcontract under your agreement.
@@ -117,9 +139,9 @@ Gaps are listed ("missing insurance certificate", "license not verified"). Candi
 
 The **rule reader** (always on) finds subcontracting, set-aside, payment, retainage, bonds, insurance, licensing, experience, pre-bid and rapid-turnaround language and stores the sentence it came from. Silence means *unknown*, never *no*. The optional **AI reader** (`ANTHROPIC_API_KEY`) may only *propose* facts: each is accepted only if its supporting quote appears **verbatim** in the document, and conflicts resolve to the stricter reading and are shown to you.
 
-## Drafts (never sent automatically)
+## Drafts
 
-Quote request and procurement inquiry use your wording, with the bracketed fields filled and extra lines added for requirements that apply; plus a scope-of-work package, a draft bid outline (with internal numbers kept in a separate "do not send" box), and a phone script. The app has no ability to send anything; it offers Copy and "open in my email app".
+Quote request and procurement inquiry use your wording, with the bracketed fields filled and extra lines added for requirements that apply; plus a scope-of-work package, a draft bid outline (with internal numbers kept in a separate "do not send" box), and a phone script. **The app never sends these for you**; it offers Copy and "open in my email app". The one thing it can email is the final bid packet, from the bid workspace (see above).
 
 ## Test results: the three live solicitations (as of 2026-10-25, default settings)
 
@@ -136,7 +158,8 @@ Behaviour pinned by tests: excellent economics cannot rescue unknown or prohibit
 ## What is not verified yet (be skeptical of these)
 
 * The sandbox this was built in could not reach SAM.gov, LAMP, Fort Worth or Bonfire (egress blocked), so the **SAM.gov connector is written to the public API documentation but has not run against the live API**, and the three listings are marked **unverified**. A web search corroborated Fort Worth 26-0268 through an aggregator (which also mentioned a mandatory pre-submittal meeting on 2026-10-22 and a five-year experience requirement, both unconfirmed). It found nothing for LAMP RFP-0003/0005. Check each on the official portal and tick "confirmed" in the app.
-* The AI reader has not been called against the live API (no key in the build environment); its accept/reject logic is unit-tested.
+* The AI reader, web scout, AI second opinion and subcontractor research have not been called against the live API (no key in the build environment). Their prompts, link checks (a scouted link must be one the search returned), quote checks and result handling are unit-tested, and the screens were exercised with faked responses.
+* USAspending.gov (past awards and subawards), Resend (email) and the SSRF-safe link reader were written to their public documentation and tested against fixtures, stubs and a local server; none has been run against the live service.
 * Win probability multipliers are reasoned starting points, not fitted to data.
 * Legal references (13 CFR 125.6, Texas Ch. 1702) flag questions to ask; they are not legal advice.
 * Fort Worth (Bonfire), LAMP and Texas SmartBuy have no feed the engine uses: add their listings by hand and paste the text.

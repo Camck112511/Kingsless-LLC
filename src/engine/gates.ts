@@ -119,8 +119,8 @@ export function primeEligibilityGate({ opp, settings, today }: GateContext): Gat
   const p = settings.profile;
   const checks: Array<{ status: GateStatus; line: string; question?: string; fix?: string }> = [];
 
-  // Registration for federal awards
-  if (opp.source === "sam.gov") {
+  // Registration for federal awards (SAM.gov listings, or any listing the scout / reader identified as federal)
+  if (opp.source === "sam.gov" || opp.level === "federal") {
     checks.push(
       p.samRegistered
         ? { status: "pass", line: "Active SAM.gov registration on file." }

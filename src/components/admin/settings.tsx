@@ -5,6 +5,7 @@ import { actions, useAppState } from "@/lib/store";
 import type { Settings as S } from "@/engine/types";
 import { NumberField } from "./fields";
 import { LocationPicker } from "./location-picker";
+import { TargetingCard } from "./targeting";
 
 export function Settings() {
   const state = useAppState();
@@ -34,6 +35,8 @@ export function Settings() {
           <CardTitle>Where you work</CardTitle>
           <LocationPicker area={s.serviceArea} onChange={(serviceArea) => set({ serviceArea })} />
         </Card>
+
+        <TargetingCard settings={s} />
 
         <Card>
           <CardTitle>Money rules</CardTitle>
@@ -71,12 +74,21 @@ export function Settings() {
         </Card>
 
         <Card>
-          <CardTitle>Signature on drafts</CardTitle>
+          <CardTitle>Company details on bid documents</CardTitle>
+          <p className="-mt-2 mb-4 text-sm text-muted">Used on cover letters, qualifications and drafts. Anything left blank shows as a highlighted blank in the documents, so nothing is ever made up.</p>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Company"><Input value={s.contact.companyName} onChange={(e) => setContact({ companyName: e.target.value })} /></Field>
-            <Field label="Your name"><Input value={s.contact.contactName} onChange={(e) => setContact({ contactName: e.target.value })} /></Field>
+            <Field label="Company legal name"><Input value={s.contact.companyName} onChange={(e) => setContact({ companyName: e.target.value })} /></Field>
+            <Field label="Your name (signs the bid)"><Input value={s.contact.contactName} onChange={(e) => setContact({ contactName: e.target.value })} /></Field>
+            <Field label="Your title"><Input value={s.contact.title ?? ""} onChange={(e) => setContact({ title: e.target.value })} placeholder="Owner" /></Field>
             <Field label="Email"><Input type="email" value={s.contact.email} onChange={(e) => setContact({ email: e.target.value })} /></Field>
             <Field label="Phone"><Input value={s.contact.phone} onChange={(e) => setContact({ phone: e.target.value })} /></Field>
+            <Field label="Website"><Input value={s.contact.website ?? ""} onChange={(e) => setContact({ website: e.target.value })} /></Field>
+            <Field label="Mailing address" className="sm:col-span-2"><Input value={s.contact.address ?? ""} onChange={(e) => setContact({ address: e.target.value })} /></Field>
+            <Field label="SAM.gov UEI" hint="If registered"><Input value={s.contact.uei ?? ""} onChange={(e) => setContact({ uei: e.target.value })} /></Field>
+            <Field label="CAGE code" hint="If registered"><Input value={s.contact.cage ?? ""} onChange={(e) => setContact({ cage: e.target.value })} /></Field>
+            <Field label="About the company" hint="Two or three sentences for the qualifications page" className="sm:col-span-2 lg:col-span-4">
+              <textarea className="min-h-20 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none" value={s.contact.capability ?? ""} onChange={(e) => setContact({ capability: e.target.value })} />
+            </Field>
           </div>
         </Card>
 
