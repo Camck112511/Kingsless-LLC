@@ -1,3 +1,5 @@
+import { PUBLIC_PHONE } from "./phone";
+
 /**
  * All public-site copy lives here. Edit freely: this is the file to change when the wording needs to change.
  * Nothing on the site claims credentials, clients, or results that are not true; keep it that way.
@@ -9,9 +11,9 @@ export const site = {
     "Kingsless LLC manages projects and procurement end to end: we scope the work, line up vetted specialist partners, and stay accountable for the result.",
   // Public contact email. Set NEXT_PUBLIC_CONTACT_EMAIL in the hosting dashboard to override it.
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "Cullenmckinney@kingsless.org",
-  // The phone number is NOT in this repo or in the page. Set CONTACT_PHONE (server-side) in the hosting dashboard;
-  // visitors get it only when they press the Phone button. The button shows only when it is set.
-  hasPhone: Boolean(process.env.CONTACT_PHONE?.trim()),
+  // The number itself is in content/phone.ts (or the CONTACT_PHONE variable) and is never rendered into a page:
+  // visitors get it only when they press the Phone button. The button is shown when a number is configured.
+  hasPhone: Boolean(process.env.CONTACT_PHONE?.trim() || PUBLIC_PHONE),
   nav: [
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },

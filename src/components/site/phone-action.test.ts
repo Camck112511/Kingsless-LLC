@@ -19,7 +19,15 @@ describe("Phone button: the number it will publish", () => {
     expect(await withPhone("512-217-77O8")).toBeNull();
   });
 
-  it("refuses an empty or implausible value", async () => {
-    for (const v of [undefined, "", "   ", "123", "1".repeat(20), "call us"]) expect(await withPhone(v)).toBeNull();
+  it("with no CONTACT_PHONE set, serves the number built into the site", async () => {
+    for (const v of [undefined, "", "   "]) expect(await withPhone(v)).toEqual({ display: "(512) 217-7788", tel: "5122177788" });
+  });
+
+  it("a CONTACT_PHONE override wins over the built-in number", async () => {
+    expect(await withPhone("(737) 555-0142")).toEqual({ display: "(737) 555-0142", tel: "7375550142" });
+  });
+
+  it("refuses an implausible CONTACT_PHONE instead of falling back to a number the owner did not intend", async () => {
+    for (const v of ["123", "1".repeat(20), "call us"]) expect(await withPhone(v)).toBeNull();
   });
 });
