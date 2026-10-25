@@ -1,0 +1,40 @@
+{
+  "name": "kingsless-llc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kingsless LLC website and admin-only contract arbitrage engine",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "npm run engine:check && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "engine:check": "node scripts/engine-lock.mjs check",
+    "engine:lock": "node scripts/engine-lock.mjs write --i-am-the-owner",
+    "verify": "npm run lint && npm run typecheck && npm test && npm run engine:check"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-next": "^16.4.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.0",
+    "vitest": "^5.0.5"
+  }
+}

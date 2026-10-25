@@ -1,0 +1,12 @@
+# The owner must approve any change to the engine, admin security or guard rails
+# (enforced only if branch protection requires code-owner review).
+/src/engine/ @Camck112511
+/src/server/ @Camck112511
+/src/lib/ @Camck112511
+/src/app/api/ @Camck112511
+/src/proxy.ts @Camck112511
+/scripts/engine-lock.mjs @Camck112511
+/engine.lock.json @Camck112511
+/.github/ @Camck112511
+/AGENTS.md @Camck112511
+/AGENTS.project.md @Camck112511

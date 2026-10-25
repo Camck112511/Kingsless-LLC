@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+/*
+  DESIGN TOKENS: re-theme the whole site by editing these values.
+  Semantic names (surface, ink, muted, line, accent, pass, fail, unknown) are used everywhere; avoid hard-coded colors.
+*/
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --surface-2: #f0eee8;
+  --ink: #14161c;
+  --muted: #5b6070;
+  --line: #e2dfd6;
+  --accent: #9a6b0f;
+  --accent-ink: #ffffff;
+  --accent-soft: #f6ecd2;
+  --pass: #17794a;
+  --pass-soft: #def3e7;
+  --fail: #b3261e;
+  --fail-soft: #fbe3e1;
+  --unknown: #8a6100;
+  --unknown-soft: #fbefcb;
+  --info: #2a5db0;
+  --info-soft: #e1ebfa;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1015;
+    --surface: #161922;
+    --surface-2: #1d212c;
+    --ink: #eef0f5;
+    --muted: #9aa1b2;
+    --line: #2a2f3c;
+    --accent: #e0b04a;
+    --accent-ink: #14161c;
+    --accent-soft: #2e2713;
+    --pass: #5fd39a;
+    --pass-soft: #12281f;
+    --fail: #ff8a80;
+    --fail-soft: #331a18;
+    --unknown: #f0c35a;
+    --unknown-soft: #332812;
+    --info: #86aef0;
+    --info-soft: #172338;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-pass: var(--pass);
+  --color-pass-soft: var(--pass-soft);
+  --color-fail: var(--fail);
+  --color-fail-soft: var(--fail-soft);
+  --color-unknown: var(--unknown);
+  --color-unknown-soft: var(--unknown-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: ui-serif, Georgia, "Times New Roman", serif;
+  --radius-card: var(--radius);
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

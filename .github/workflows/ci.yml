@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # lint, typecheck, unit tests (the engine's golden tests), and the engine integrity lock
+      - run: npm run verify
+      - run: npm run build
+        env:
+          # build must not need real secrets
+          NEXT_TELEMETRY_DISABLED: "1"
