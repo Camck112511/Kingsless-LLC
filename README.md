@@ -19,7 +19,9 @@ Stack: Next.js 16 (App Router), TypeScript, Tailwind CSS 4. Deploys on Vercel wi
 | `AUTH_SECRET` | **yes** | Signs the login cookie. At least 32 random characters: `openssl rand -base64 48`. |
 | `SAM_GOV_API_KEY` | optional | Live federal discovery. Free: SAM.gov → your profile → Public API Key. Daily request limits apply. |
 | `ANTHROPIC_API_KEY` | optional | Lets the AI reader pull clauses out of pasted solicitation text. Default model `claude-opus-5-5`; override with `ANTHROPIC_MODEL`. |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | optional | The address shown on the Contact page. Read at build time, so redeploy after setting it. |
+| `CONTACT_PHONE` | optional | Your public phone number, e.g. `(555) 010-0100`. Visitors only see it after pressing the **Phone** button, so it is never in the page HTML or this repo. **The Phone button appears only when this is set.** Redeploy after setting it. |
+| `NEXT_PUBLIC_SITE_URL` | optional | Your site's address (e.g. `https://kingsless.org`), used for link previews when the site is shared. |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | optional | Overrides the public email. Default: `Cullenmckinney@kingsless.org`. Read at build time. |
 
 **If `ADMIN_PASSWORD` or `AUTH_SECRET` is missing or too short, the admin is disabled and nobody can sign in** (fails closed). The development credentials in `.env.development` are rejected in production.
 
@@ -88,5 +90,6 @@ src/app/(site)/    UI         public website pages
 src/app/admin/     UI         admin pages
 src/components/    UI         components
 src/content/       UI         site copy
-src/app/globals.css UI        design tokens
+src/app/globals.css UI        design tokens (black / gold / silver, from the logo)
+public/brand/      UI         logo files (see docs/BRAND.md)
 ```

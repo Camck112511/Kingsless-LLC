@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { LoginForm } from "@/components/admin/login-form";
 import { Card, Notice } from "@/components/ui";
 import { adminStatus } from "@/server/views";
@@ -11,7 +12,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <p className="mb-6 text-center font-display text-2xl font-semibold">Kingsless LLC</p>
+        <Image src="/brand/logo-dark.webp" alt="Kingsless LLC" width={1002} height={535} priority className="mx-auto mb-6 h-32 w-auto" />
         <Card>
           <h1 className="mb-1 text-lg font-semibold">Admin sign-in</h1>
           <p className="mb-5 text-sm text-muted">Contract engine. Authorized use only.</p>

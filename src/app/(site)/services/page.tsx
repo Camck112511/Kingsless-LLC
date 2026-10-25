@@ -27,7 +27,7 @@ export default function ServicesPage() {
       </div>
       <div className="mt-14 rounded-[var(--radius-card)] bg-surface-2 p-8 text-center">
         <p className="font-display text-2xl font-semibold">Have a job in mind?</p>
-        <Link href="/contact" className="mt-5 inline-block rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-ink transition hover:opacity-90">
+        <Link href="/contact" className="btn-gold mt-5 inline-block rounded-xl px-6 py-3 text-sm font-semibold transition">
           Get in touch
         </Link>
       </div>

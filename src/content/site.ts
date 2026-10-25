@@ -7,8 +7,11 @@ export const site = {
   tagline: "One accountable partner. Vetted specialists. Work delivered as promised.",
   description:
     "Kingsless LLC manages projects and procurement end to end: we scope the work, line up vetted specialist partners, and stay accountable for the result.",
-  // Set NEXT_PUBLIC_CONTACT_EMAIL in the hosting dashboard to show a contact address on the site.
-  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "",
+  // Public contact email. Set NEXT_PUBLIC_CONTACT_EMAIL in the hosting dashboard to override it.
+  contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "Cullenmckinney@kingsless.org",
+  // The phone number is NOT in this repo or in the page. Set CONTACT_PHONE (server-side) in the hosting dashboard;
+  // visitors get it only when they press the Phone button. The button shows only when it is set.
+  hasPhone: Boolean(process.env.CONTACT_PHONE?.trim()),
   nav: [
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/lib/api";
@@ -19,8 +20,11 @@ export function AdminNav() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 sm:px-6">
-        <Link href="/admin" className="mr-2 font-display text-lg font-semibold">
-          Kingsless <span className="text-accent">Engine</span>
+        <Link href="/admin" className="mr-2 flex items-center gap-2.5 font-display text-lg font-semibold">
+          <Image src="/brand/mark.webp" alt="" width={797} height={515} className="h-7 w-auto" />
+          <span>
+            Kingsless <span className="text-accent">Engine</span>
+          </span>
         </Link>
         <nav aria-label="Admin" className="flex flex-1 flex-wrap items-center gap-1 text-sm">
           {links.map((l) => {
