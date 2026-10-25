@@ -8,7 +8,7 @@ export function SiteFooter() {
     <footer className="bg-footer text-footer-ink">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Image src="/brand/logo-dark.webp" alt={site.name} width={1002} height={535} className="h-20 w-auto" />
+          <Image src="/brand/wordmark-silver.webp" alt={site.name} width={623} height={191} className="h-14 w-auto" />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-footer-muted">{site.tagline}</p>
         </div>
         <nav aria-label="Footer">
