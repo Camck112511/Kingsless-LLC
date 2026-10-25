@@ -103,7 +103,8 @@ describe("the three hard rules", () => {
 describe("verdict ladder", () => {
   it("qualified when every gate passes under cautious assumptions", () => {
     const a = analyze({ opportunity: cleanOpp(), inputs: goodInputs() }, world());
-    expect(a.gates.map((g) => g.status)).toEqual(["pass", "pass", "pass", "pass", "pass", "pass"]);
+    expect(a.gates.map((g) => g.status)).toEqual(["pass", "pass", "pass", "pass", "pass", "pass", "pass"]);
+    expect(a.gates.map((g) => g.id)).toContain("location");
     expect(a.verdict).toBe("qualified");
     expect(a.cash?.peakCashRequiredUsd).toBe(0);
   });

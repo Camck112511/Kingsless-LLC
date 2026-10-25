@@ -8,6 +8,7 @@ import type {
   CompanyProfile,
   CostItems,
   Inputs,
+  ServiceArea,
   ServiceCategory,
   Settings,
   SubTerms,
@@ -27,7 +28,11 @@ export const DEFAULT_PROFILE: CompanyProfile = {
   pastPerformanceCount: 0,
 };
 
+/** No restriction until the owner picks a location. */
+export const DEFAULT_SERVICE_AREA: ServiceArea = { scope: "anywhere", states: [], places: [] };
+
 export const DEFAULT_SETTINGS: Settings = {
+  serviceArea: DEFAULT_SERVICE_AREA,
   availableCapitalUsd: 300,
   walkAwayMargin: 0.1,
   targetMargin: 0.2,

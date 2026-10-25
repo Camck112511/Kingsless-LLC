@@ -6,6 +6,8 @@ import { fmtDate, fmtPct, fmtUsd } from "@/components/format";
 import { Badge, Button, Card, Notice, PageHeader, Select, Stat, cn } from "@/components/ui";
 import { actions, STATUS_LABELS, useAppState, type PipelineStatus } from "@/lib/store";
 import { useAnalyses } from "@/lib/use-analyses";
+import { US_STATES } from "@/lib/us-states";
+import { LocationPicker } from "./location-picker";
 import { VerdictBadge } from "./verdict";
 
 const FILTERS: Array<{ id: "all" | Verdict; label: string }> = [
@@ -20,6 +22,7 @@ export function Dashboard() {
   const state = useAppState();
   const view = useAnalyses(state);
   const [filter, setFilter] = useState<"all" | Verdict>("all");
+  const [editingArea, setEditingArea] = useState(false);
 
   const itemsById = useMemo(() => new Map((state?.items ?? []).map((i) => [i.opportunity.id, i])), [state]);
   const counts = useMemo(() => {
@@ -32,6 +35,12 @@ export function Dashboard() {
   if (!state) return <p className="text-sm text-muted">Loading your pipeline…</p>;
 
   const missingTests = state.items.length === 0;
+  const area = state.settings.serviceArea;
+  const areaText =
+    area.scope === "selected" && (area.states.length > 0 || area.places.length > 0)
+      ? [area.places.join(", "), area.states.map((c) => US_STATES.find((s) => s.code === c)?.name ?? c).join(", ")].filter(Boolean).join(" · ")
+      : "Anywhere (no location filter)";
+  const outsideArea = view.ordered.filter((a) => a.gates.some((g) => g.id === "location" && g.status === "fail")).length;
 
   return (
     <>
@@ -49,6 +58,22 @@ export function Dashboard() {
           </>
         }
       />
+
+      <Card className="mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted">Where you work</p>
+            <p className="mt-0.5 text-base font-semibold">{areaText}</p>
+            {area.scope === "selected" && outsideArea > 0 && <p className="mt-0.5 text-xs text-muted">{outsideArea} opportunit{outsideArea === 1 ? "y is" : "ies are"} outside this area and rejected.</p>}
+          </div>
+          <Button onClick={() => setEditingArea((v) => !v)}>{editingArea ? "Done" : "Change location"}</Button>
+        </div>
+        {editingArea && (
+          <div className="mt-4 border-t border-line pt-4">
+            <LocationPicker area={area} onChange={(serviceArea) => actions.setSettings({ ...state.settings, serviceArea })} />
+          </div>
+        )}
+      </Card>
 
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="Capital available" value={fmtUsd(state.settings.availableCapitalUsd)} sub="Hard ceiling for any deal" />

@@ -51,6 +51,8 @@ All rates are fractions (0.38 = 38%). Dates are ISO. Money is US dollars. See `s
 | Max days to first / full payment (from award) | 90 / 150 |
 | Minimum days before due date | 7 |
 
+Plus a **service area** (where you will work): *Anywhere*, or *Only these places* = chosen states and, optionally, cities/counties inside them. Default: anywhere.
+
 Plus a **company profile**: SAM registration, small business, certifications (8(a), SDVOSB, WOSB, HUBZone), licenses, insurance limit, bonding capacity, years in business, citable past projects. Requirements are checked against it. The defaults are deliberately honest for a new LLC (nothing held), so the engine does not flatter you.
 
 ## Gates
@@ -60,9 +62,12 @@ Plus a **company profile**: SAM registration, small business, certifications (8(
 | 1 | **Work may be subcontracted** | yes | allowed, or limited and the plan is within the cap | prohibited (incl. "intermediaries not permitted") | silent; limited with no cap; cap exceeded (depends on "similarly situated" subs) |
 | 2 | **You can qualify as the prime** | yes | every requirement found is met by your profile | SAM registration missing for a federal award; set-aside you don't hold; insurance/bond/experience/past-performance requirement you can't meet; mandatory pre-bid meeting already past | any requirement not yet established (set-aside, insurance, bonds, license) |
 | 3 | **Financeable without cash you don't have** | yes | peak cash needed ≤ capital **even under cautious sub terms** | peak cash > capital **even if the sub is paid only after you are** | between the two: depends on the sub's terms |
-| 4 | Leaves enough margin | no | cautious case ≥ walk-away margin and ≥ minimum profit | best case still below | in between |
-| 5 | Gets paid soon enough | no | first/full payment within limits | beyond limits | payment clause not found |
-| 6 | Enough time to bid | no | ≥ 7 days to due date | passed, or < 7 days | no due date |
+| 4 | **In your selected location** | no | the place of performance is inside your chosen states (and cities/counties, if you named any), or no location is selected | the listing places the work outside your selection | the listing does not say where the work is, or names the state but not the city/county you required |
+| 5 | Leaves enough margin | no | cautious case ≥ walk-away margin and ≥ minimum profit | best case still below | in between |
+| 6 | Gets paid soon enough | no | first/full payment within limits | beyond limits | payment clause not found |
+| 7 | Enough time to bid | no | ≥ 7 days to due date | passed, or < 7 days | no due date |
+
+**Location.** The state and place are matched as written ("TX", "tx" and "Texas" are the same state; "Liberty" matches "Liberty County"; an unrecognised state is *unknown*, never guessed). A contract outside your selection is rejected; one that doesn't say where the work is stays unproven. Discovery uses the same rule: SAM.gov is asked for work performed in your chosen state, and each result is labelled in your area / outside / unclear by the engine. The shortlist already requires subcontractors to serve the contract's location. Distance-based radius is not supported (it needs geocoding data); pick states and cities/counties instead.
 
 Small-business set-asides add a default subcontracting limit (13 CFR 125.6: about 50% services/supplies, 85% general construction, 75% specialty trades) when the clause isn't pasted. A plan above it is **unproven**, not failed, because subs that are "similarly situated" don't count. Confirm the clause in the solicitation; this is a prompt to check, not legal advice.
 
@@ -72,8 +77,8 @@ Small-business set-asides add a default subcontracting limit (13 CFR 125.6: abou
 | --- | --- |
 | **Reject** | at least one gate is proven to fail |
 | **Investigate** | nothing failed, but something can't be proven. **Never a bid recommendation.** |
-| **Qualified** | all six gates pass, even under cautious assumptions. Get firm quotes next. |
-| **Bid-ready** | all six pass on a **firm quote** from a sub who **confirmed they will subcontract under your agreement**, with known payment terms |
+| **Qualified** | all seven gates pass, even under cautious assumptions. Get firm quotes next. |
+| **Bid-ready** | all seven pass on a **firm quote** from a sub who **confirmed they will subcontract under your agreement**, with known payment terms |
 
 Subcontractor outreach drafts are **locked** while gate 1 or 2 is unproven: only the procurement inquiry is produced.
 
@@ -123,6 +128,8 @@ Quote request and procurement inquiry use your wording, with the bracketed field
 | **Fort Worth 26-0268**, Seasonal and Event Supplies | **Reject** | Intermediaries not permitted (gate 1 fails); substantial insurance required and none held (gate 2 fails); due in 4 days (gate 6 fails). |
 | **LAMP RFP-0003**, Site Clearing and Mass Grading | **Investigate** | Nothing fails. Cannot prove: subcontracting rules, prime qualification (set-aside, insurance, bonds, license), financing (no value stated), payment clause. Only the procurement inquiry is drafted. |
 | **LAMP RFP-0005**, Construction-Phase Site Security | **Investigate** | Same, plus guard-licensing risk (Texas Occupations Code Ch. 1702): must the prime hold the license? Listed through 2026-12-31, which may not be the proposal deadline. |
+
+Choosing a location changes nothing for these three while Texas (or anywhere) is selected; choosing, say, Ohio rejects all three as outside your selected location.
 
 Behaviour pinned by tests: excellent economics cannot rescue unknown or prohibited subcontracting; a $12,000 upfront obligation fails financing against $300 even at a 20% margin; a $4,000 pay-when-paid job outranks a $40,000 job that needs $12,000 up front; the owner's $10,000 / $5,700 / $500 example gives 38.0% margin and 57.0% sub share.
 

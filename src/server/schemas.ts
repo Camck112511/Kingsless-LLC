@@ -11,6 +11,7 @@ import type {
   Inputs,
   Opportunity,
   Quote,
+  ServiceArea,
   Settings,
   Subcontractor,
   SubTerms,
@@ -144,7 +145,14 @@ const ProfileSchema: z.ZodType<CompanyProfile> = z.object({
   pastPerformanceCount: z.number().finite().int().min(0).max(10_000),
 });
 
+export const ServiceAreaSchema: z.ZodType<ServiceArea> = z.object({
+  scope: z.enum(["anywhere", "selected"]),
+  states: z.array(z.string().regex(/^[A-Za-z]{2}$/).transform((v) => v.toUpperCase())).max(60),
+  places: z.array(z.string().trim().min(1).max(100)).max(100),
+});
+
 export const SettingsSchema: z.ZodType<Settings> = z.object({
+  serviceArea: ServiceAreaSchema,
   availableCapitalUsd: money,
   walkAwayMargin: z.number().finite().min(0).max(0.95),
   targetMargin: z.number().finite().min(0).max(0.95),
@@ -182,6 +190,7 @@ export const ExtractRequestSchema = z.object({
 });
 
 export const DiscoverRequestSchema = z.object({
+  serviceArea: ServiceAreaSchema.optional(),
   daysBack: z.number().int().min(1).max(90).default(14),
   keyword: z.string().max(100).optional(),
   ncode: z.string().regex(/^\d{2,6}$/).optional(),

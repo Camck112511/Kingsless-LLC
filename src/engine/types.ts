@@ -122,7 +122,26 @@ export interface CompanyProfile {
   pastPerformanceCount: number; // completed projects you can cite as references
 }
 
+/** Where you are willing to work. Contracts are judged (and discovered) against this. */
+export interface ServiceArea {
+  /** "anywhere" = no location filter. "selected" = only work performed inside the chosen states / places. */
+  scope: "anywhere" | "selected";
+  /** Two-letter state codes, e.g. ["TX"]. Empty with scope "selected" means no restriction. */
+  states: string[];
+  /** Optional cities or counties inside those states, e.g. ["Houston", "Liberty County"]. */
+  places: string[];
+}
+
+/** Result of testing one place of performance against a ServiceArea. */
+export interface LocationMatch {
+  status: GateStatus;
+  detail: string;
+  question: string | null;
+}
+
 export interface Settings {
+  /** Where you want to work. */
+  serviceArea: ServiceArea;
   /** Cash you can actually put at risk. Hard ceiling for the financing gate. */
   availableCapitalUsd: number;
   /** Net margin (before tax) at or above which a bid clears. Also sets the walk-away price. */
@@ -234,6 +253,7 @@ export type GateId =
   | "subcontracting"
   | "prime-eligibility"
   | "financing"
+  | "location"
   | "margin"
   | "payment-timing"
   | "deadline";

@@ -1,8 +1,8 @@
 /**
- * The six gates. Each returns pass / fail / unknown.
+ * The seven gates. Each returns pass / fail / unknown.
  *
  *   HARD (owner-declared, non-negotiable):  subcontracting, prime-eligibility, financing
- *   QUALIFYING:                              margin, payment-timing, deadline
+ *   QUALIFYING:                              location, margin, payment-timing, deadline
  *
  * Rule of thumb used everywhere: a gate is `pass` only when the facts PROVE it, `fail` only when the facts PROVE
  * it cannot work, and `unknown` otherwise. `unknown` can never produce a bid recommendation.
@@ -10,6 +10,7 @@
  * PROTECTED engine file.
  */
 import { RULES } from "./config";
+import { checkLocation } from "./locations";
 import type { Evaluated } from "./scenarios";
 import type { Gate, GateStatus, Opportunity, Settings } from "./types";
 import { daysBetween, isIsoDate, pct, usd } from "./util";
@@ -316,6 +317,21 @@ export function financingGate({ settings, scenarios }: GateContext): Gate {
     summary: `Cash needed ranges ${usd(need(opt))} to ${usd(need(cons))} against ${usd(cap)} available. It depends on the sub's payment terms.`,
     details: ["Works only if the subcontract is pay-when-paid (or equivalent) with no deposit."],
     questions: ["Will the subcontractor accept pay-when-paid terms with no deposit?"],
+  });
+}
+
+/* ------------------------------------ location ----------------------------------- */
+
+export function locationGate({ opp, settings }: GateContext): Gate {
+  const m = checkLocation(opp.location, settings.serviceArea);
+  return gate({
+    id: "location",
+    label: "In your selected location",
+    hard: false,
+    status: m.status,
+    summary: m.detail,
+    questions: m.question ? [m.question] : [],
+    fixableBy: m.status === "fail" ? "Add this state or place to your selected location in Settings." : null,
   });
 }
 

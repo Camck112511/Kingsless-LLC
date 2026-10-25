@@ -8,6 +8,8 @@ import "server-only";
  *
  * PROTECTED. See AGENTS.project.md.
  */
+import { checkLocation } from "@/engine/locations";
+import type { ServiceArea } from "@/engine/types";
 import { normalizeAward, normalizeSolicitation, type SamRecord } from "./sam-normalize";
 import type { DiscoveryResult } from "./types";
 
@@ -50,7 +52,7 @@ export function buildSamUrl(q: SamQuery, apiKey: string, now: Date = new Date())
   return url;
 }
 
-export async function discoverFromSam(q: SamQuery, apiKey: string | undefined, today: string): Promise<DiscoveryResult> {
+export async function discoverFromSam(q: SamQuery, apiKey: string | undefined, today: string, area?: ServiceArea): Promise<DiscoveryResult> {
   if (!apiKey) throw new SourceError("SAM_GOV_API_KEY is not set. Add a free key from SAM.gov (profile > Public API Key) to the environment.", 503);
 
   // postedFrom and postedTo must fall in the same calendar year per the API; split would double the quota, so clamp instead.
@@ -74,8 +76,10 @@ export async function discoverFromSam(q: SamQuery, apiKey: string | undefined, t
   const records = body?.opportunitiesData ?? [];
   const opportunities = q.kind === "solicitations" ? records.flatMap((r) => normalizeSolicitation(r, today) ?? []) : [];
   const awards = q.kind === "awards" ? records.flatMap((r) => normalizeAward(r) ?? []) : [];
+  const areaMatch = area ? Object.fromEntries(opportunities.map((o) => [o.id, checkLocation(o.location, area)])) : {};
   return {
     opportunities,
+    areaMatch,
     awards,
     totalRecords: body?.totalRecords ?? records.length,
     note: clamped.daysBack !== q.daysBack ? "SAM.gov limits a search to one calendar year, so the window was shortened to January 1." : "",

@@ -4,6 +4,7 @@ import { Button, Card, CardTitle, Field, Input, Notice, PageHeader } from "@/com
 import { actions, useAppState } from "@/lib/store";
 import type { Settings as S } from "@/engine/types";
 import { NumberField } from "./fields";
+import { LocationPicker } from "./location-picker";
 
 export function Settings() {
   const state = useAppState();
@@ -29,6 +30,11 @@ export function Settings() {
     <>
       <PageHeader title="Settings" subtitle="These are the numbers and facts the engine judges every opportunity against. Be honest in the company profile: it is what stops the engine recommending work you cannot legally or financially take." />
       <div className="space-y-5">
+        <Card>
+          <CardTitle>Where you work</CardTitle>
+          <LocationPicker area={s.serviceArea} onChange={(serviceArea) => set({ serviceArea })} />
+        </Card>
+
         <Card>
           <CardTitle>Money rules</CardTitle>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

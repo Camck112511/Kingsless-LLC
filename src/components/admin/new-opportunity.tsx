@@ -5,7 +5,7 @@ import type { ServiceCategory, SourceId } from "@/engine/types";
 import { Button, Card, Field, Input, Notice, PageHeader, Select, Textarea } from "@/components/ui";
 import { extractApi } from "@/lib/api";
 import { blankIntake, buildOpportunity, type IntakeForm } from "@/lib/intake";
-import { actions } from "@/lib/store";
+import { actions, useAppState } from "@/lib/store";
 
 const SOURCES: Array<[SourceId, string]> = [
   ["manual", "Other / manual"], ["sam.gov", "SAM.gov"], ["fort-worth-bonfire", "City of Fort Worth (Bonfire)"], ["lamp-texas", "LAMP Texas"], ["texas-esbd", "Texas SmartBuy (ESBD)"],
@@ -17,6 +17,8 @@ const CATEGORIES: Array<[ServiceCategory, string]> = [
 
 export function NewOpportunity() {
   const router = useRouter();
+  const appState = useAppState();
+  const defaultState = appState?.settings.serviceArea.scope === "selected" ? (appState.settings.serviceArea.states[0] ?? "") : "";
   const [f, setF] = useState<IntakeForm>(blankIntake());
   const [text, setText] = useState("");
   const [useAi, setUseAi] = useState(false);
@@ -37,7 +39,7 @@ export function NewOpportunity() {
       }
       terms = res.data.terms;
     }
-    const opp = buildOpportunity({ ...f, scope: f.scope || text.slice(0, 600) }, terms);
+    const opp = buildOpportunity({ ...f, state: f.state || defaultState, scope: f.scope || text.slice(0, 600) }, terms);
     actions.addItems([opp]);
     router.push(`/admin/opportunities/${encodeURIComponent(opp.id)}`);
   }
@@ -62,7 +64,7 @@ export function NewOpportunity() {
             </Field>
             <Field label="Due date"><Input type="date" value={f.dueDate} onChange={(e) => set({ dueDate: e.target.value })} /></Field>
             <Field label="City / county"><Input value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
-            <Field label="State"><Input maxLength={2} value={f.state} onChange={(e) => set({ state: e.target.value })} /></Field>
+            <Field label="State" hint={defaultState ? `Blank = ${defaultState} (your selected state)` : undefined}><Input maxLength={2} value={f.state} placeholder={defaultState} onChange={(e) => set({ state: e.target.value })} /></Field>
             <Field label="Official link" className="sm:col-span-2 lg:col-span-3"><Input type="url" value={f.sourceUrl} onChange={(e) => set({ sourceUrl: e.target.value })} placeholder="https://" /></Field>
             <Field label="Scope (short)" className="sm:col-span-2 lg:col-span-3"><Textarea value={f.scope} onChange={(e) => set({ scope: e.target.value })} className="min-h-20" /></Field>
           </div>

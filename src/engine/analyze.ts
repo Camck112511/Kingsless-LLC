@@ -13,6 +13,7 @@ import { ENGINE_VERSION, RULES, VERDICT_TIER } from "./config";
 import {
   deadlineGate,
   financingGate,
+  locationGate,
   marginGate,
   paymentTimingGate,
   primeEligibilityGate,
@@ -37,7 +38,7 @@ export interface World {
   today: string;
 }
 
-const GATE_ORDER = ["subcontracting", "prime-eligibility", "financing", "margin", "payment-timing", "deadline"];
+const GATE_ORDER = ["subcontracting", "prime-eligibility", "financing", "location", "margin", "payment-timing", "deadline"];
 
 export function analyze(item: AnalyzeItem, world: World): Analysis {
   const { opportunity: opp, inputs } = item;
@@ -58,6 +59,7 @@ export function analyze(item: AnalyzeItem, world: World): Analysis {
     subcontractingGate(ctx),
     primeEligibilityGate(ctx),
     financingGate(ctx),
+    locationGate(ctx),
     marginGate(ctx),
     paymentTimingGate(ctx),
     deadlineGate(ctx),

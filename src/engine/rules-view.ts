@@ -3,6 +3,7 @@
  * /admin/rules page can never drift from what the engine actually does. PROTECTED engine file.
  */
 import { DEFAULT_SETTINGS, ENGINE_VERSION, RULES } from "./config";
+import { describeArea } from "./locations";
 import { pct, usd } from "./util";
 
 export interface RulesView {
@@ -25,6 +26,7 @@ export function describeRules(): RulesView {
       { id: "subcontracting", label: "Work may be subcontracted", hard: true, rule: "Pass only if the solicitation permits subcontracting (and any cap is respected). Fail if it prohibits subcontracting or intermediaries. Unknown if it is silent." },
       { id: "prime-eligibility", label: "You can qualify as the prime", hard: true, rule: "Every requirement found (SAM registration, set-aside, insurance, bonds, licensing, experience, past performance, mandatory pre-bid meeting) is checked against your company profile. Any miss fails; anything unconfirmed is unknown." },
       { id: "financing", label: "Financeable without cash you don't have", hard: true, rule: `Simulates the cash timeline. Pass if peak cash needed stays within your available capital even under cautious sub terms; fail if it exceeds capital even if the sub is paid only after you are; otherwise unknown.` },
+      { id: "location", label: "In your selected location", hard: false, rule: "You choose where you will work (all states, or chosen states and optionally cities/counties). Pass if the place of performance is inside it; fail if the listing places the work outside it; unknown if the listing does not say where the work is. With no location selected the gate always passes." },
       { id: "margin", label: "Leaves enough margin", hard: false, rule: `Pass if the cautious case still clears the walk-away margin (${pct(s.walkAwayMargin)}) and the dollar floor (${usd(s.minProfitUsd)}); fail if even the best case misses; otherwise unknown.` },
       { id: "payment-timing", label: "Gets paid soon enough", hard: false, rule: `Needs the actual payment clause. First payment within ${s.maxDaysToFirstPayment} days of award and full payment within ${s.maxDaysToFullPayment} days, counting invoice cycle, net days, acceptance, and retainage.` },
       { id: "deadline", label: "Enough time to bid properly", hard: false, rule: `Fail if the due date has passed or fewer than ${s.minDaysToDeadline} days remain (time for real quotes and a compliant bid).` },
@@ -36,6 +38,7 @@ export function describeRules(): RulesView {
       { id: "bid-ready", label: "Bid-ready", meaning: "Every gate passes on a firm quote from a subcontractor who confirmed they will work under your agreement." },
     ],
     defaults: [
+      { label: "Selected location", value: describeArea(s.serviceArea), note: "Where you will work. Change it in Settings or on the pipeline page." },
       { label: "Available capital", value: usd(s.availableCapitalUsd), note: "Hard ceiling for the financing gate." },
       { label: "Walk-away margin", value: pct(s.walkAwayMargin), note: "Lowest net margin (before tax) a bid may carry." },
       { label: "Target margin", value: pct(s.targetMargin), note: "Margin the target bid aims for." },

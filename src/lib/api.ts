@@ -1,6 +1,6 @@
 "use client";
 /** Thin typed wrappers around the admin API. PROTECTED. */
-import type { Analysis, Terms } from "@/engine/types";
+import type { Analysis, ServiceArea, Terms } from "@/engine/types";
 import type { ScriptSet } from "@/engine/scripts";
 import type { DiscoveryResult } from "@/server/sources/types";
 import type { AppState } from "./store";
@@ -68,7 +68,7 @@ export interface ExtractResponse {
 
 export const extractApi = (text: string, useAi: boolean, baseTerms?: Terms) => postJson<ExtractResponse>("/api/admin/extract", { text, useAi, baseTerms });
 
-export const discoverApi = (q: { daysBack: number; keyword?: string; ncode?: string; state?: string; limit: number; kind: "solicitations" | "awards" }) =>
+export const discoverApi = (q: { daysBack: number; keyword?: string; ncode?: string; state?: string; limit: number; kind: "solicitations" | "awards"; serviceArea?: ServiceArea }) =>
   postJson<DiscoveryResult>("/api/admin/discover", q);
 
 export async function logout(): Promise<void> {

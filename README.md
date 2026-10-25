@@ -25,11 +25,12 @@ Stack: Next.js 16 (App Router), TypeScript, Tailwind CSS 4. Deploys on Vercel wi
 
 ## Using the engine
 
-1. **Settings**: enter your real capital and your company profile (insurance, bonding, licenses, SAM registration, past projects). The engine judges everything against this, so be honest.
-2. **Pipeline → Load the 3 live test cases** to see it work, or **Discover** (SAM.gov) / **Add** (paste any solicitation).
-3. Open an opportunity. Read the verdict and gates; confirm the facts against the official listing and tick the box.
-4. Enter the expected price and a sub-price estimate. Send the **procurement inquiry** first. When the hard rules are proven, request **firm quotes**, enter them, and re-check.
-5. You approve and bid. The engine never sends anything or spends anything.
+1. **Pick your location** (pipeline page → *Change location*, or Settings → *Where you work*): anywhere, or chosen states and optionally cities/counties. Discovery searches there, and contracts outside it are rejected.
+2. **Settings**: enter your real capital and your company profile (insurance, bonding, licenses, SAM registration, past projects). The engine judges everything against this, so be honest.
+3. **Pipeline → Load the 3 live test cases** to see it work, or **Discover** (SAM.gov) / **Add** (paste any solicitation).
+4. Open an opportunity. Read the verdict and gates; confirm the facts against the official listing and tick the box.
+5. Enter the expected price and a sub-price estimate. Send the **procurement inquiry** first. When the hard rules are proven, request **firm quotes**, enter them, and re-check.
+6. You approve and bid. The engine never sends anything or spends anything.
 
 **Your data lives in your browser** (localStorage): pipeline, directory, quotes, settings. There is no database yet. Use **Settings → Download backup** regularly; clearing site data erases it.
 

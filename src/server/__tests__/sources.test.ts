@@ -88,3 +88,69 @@ describe("request validation", () => {
     expect(resolveToday(undefined, now)).toBe("2026-10-25");
   });
 });
+
+describe("location in discovery", () => {
+  const settingsSchema = async () => (await import("../schemas")).SettingsSchema;
+
+  it("settings accept a service area and normalise state codes", async () => {
+    const { DEFAULT_SETTINGS } = await import("@/engine/config");
+    const parsed = (await settingsSchema()).safeParse({ ...DEFAULT_SETTINGS, serviceArea: { scope: "selected", states: ["tx", "OK"], places: ["Houston"] } });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.serviceArea.states).toEqual(["TX", "OK"]);
+  });
+
+  it("settings reject malformed locations", async () => {
+    const { DEFAULT_SETTINGS } = await import("@/engine/config");
+    for (const bad of [{ scope: "everywhere", states: [], places: [] }, { scope: "selected", states: ["Texas"], places: [] }, { scope: "selected", states: [], places: [""] }]) {
+      expect((await settingsSchema()).safeParse({ ...DEFAULT_SETTINGS, serviceArea: bad }).success).toBe(false);
+    }
+  });
+
+  it("the API refuses settings that lack a service area (the browser store fills the default in before sending)", async () => {
+    const { DEFAULT_SETTINGS, DEFAULT_SERVICE_AREA } = await import("@/engine/config");
+    const { serviceArea: _omitted, ...withoutArea } = DEFAULT_SETTINGS;
+    void _omitted;
+    expect((await settingsSchema()).safeParse(withoutArea).success).toBe(false);
+    expect(DEFAULT_SERVICE_AREA).toEqual({ scope: "anywhere", states: [], places: [] });
+  });
+
+  it("SAM discovery asks SAM for the chosen state and labels every result against your area", async () => {
+    const { discoverFromSam } = await import("../sources/sam");
+    const inTx: SamRecord = { ...record, noticeId: "tx1", placeOfPerformance: { city: { name: "Houston" }, state: { code: "TX" } } };
+    const inOh: SamRecord = { ...record, noticeId: "oh1", placeOfPerformance: { city: { name: "Columbus" }, state: { code: "OH" } } };
+    const nowhere: SamRecord = { ...record, noticeId: "xx1", placeOfPerformance: null };
+    let requested = "";
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: URL | string) => {
+      requested = String(url);
+      return new Response(JSON.stringify({ totalRecords: 3, opportunitiesData: [inTx, inOh, nowhere] }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const res = await discoverFromSam({ daysBack: 7, state: "TX", limit: 10, kind: "solicitations" }, "KEY", "2026-10-25", { scope: "selected", states: ["TX"], places: [] });
+      expect(new URL(requested).searchParams.get("state")).toBe("TX");
+      expect(res.areaMatch["sam-tx1"]?.status).toBe("pass");
+      expect(res.areaMatch["sam-oh1"]?.status).toBe("fail");
+      expect(res.areaMatch["sam-xx1"]?.status).toBe("unknown");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("the discover route accepts a service area from a signed-in admin (and still needs the SAM key)", async () => {
+    const { vi } = await import("vitest");
+    vi.stubEnv("ADMIN_PASSWORD", "a-long-enough-password");
+    vi.stubEnv("AUTH_SECRET", "x".repeat(40));
+    vi.stubEnv("SAM_GOV_API_KEY", "");
+    const { signSession } = await import("../session");
+    const { POST } = await import("@/app/api/admin/discover/route");
+    const res = await POST(
+      new Request("http://localhost/api/admin/discover", {
+        method: "POST",
+        headers: { "content-type": "application/json", host: "localhost", origin: "http://localhost", cookie: `kl_admin=${await signSession("x".repeat(40))}` },
+        body: JSON.stringify({ state: "TX", serviceArea: { scope: "selected", states: ["TX"], places: [] } }),
+      }),
+    );
+    expect(res.status).toBe(503); // valid request shape, but no SAM key configured
+    vi.unstubAllEnvs();
+  });
+});

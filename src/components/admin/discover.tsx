@@ -4,6 +4,7 @@ import { fmtDate, fmtUsd, safeUrl } from "@/components/format";
 import { Badge, Button, Card, Field, Input, Notice, PageHeader, Select } from "@/components/ui";
 import { discoverApi } from "@/lib/api";
 import { actions, useAppState } from "@/lib/store";
+import { US_STATES } from "@/lib/us-states";
 import type { DiscoveryResult } from "@/server/sources/types";
 
 export function Discover() {
@@ -11,18 +12,23 @@ export function Discover() {
   const [kind, setKind] = useState<"solicitations" | "awards">("solicitations");
   const [keyword, setKeyword] = useState("");
   const [ncode, setNcode] = useState("");
-  const [st, setSt] = useState("TX");
+  const [st, setSt] = useState<string | null>(null);
+  const [hideOutside, setHideOutside] = useState(true);
   const [daysBack, setDaysBack] = useState("14");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<DiscoveryResult | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
 
+  const area = state?.settings.serviceArea;
+  const areaOn = !!area && area.scope === "selected" && (area.states.length > 0 || area.places.length > 0);
+  const stateValue = st ?? (areaOn ? (area.states[0] ?? "") : "");
+
   async function run(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await discoverApi({ kind, daysBack: Math.min(90, Math.max(1, Number(daysBack) || 14)), keyword: keyword.trim() || undefined, ncode: ncode.trim() || undefined, state: st.trim() || undefined, limit: 25 });
+    const res = await discoverApi({ kind, daysBack: Math.min(90, Math.max(1, Number(daysBack) || 14)), keyword: keyword.trim() || undefined, ncode: ncode.trim() || undefined, state: stateValue || undefined, limit: 25, serviceArea: area });
     setBusy(false);
     if (!res.ok) return setError(res.error);
     setResult(res.data);
@@ -44,7 +50,16 @@ export function Discover() {
             </Field>
             <Field label="Title keyword"><Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="grading, janitorial…" /></Field>
             <Field label="NAICS code"><Input value={ncode} onChange={(e) => setNcode(e.target.value)} placeholder="237310" inputMode="numeric" /></Field>
-            <Field label="State"><Input value={st} maxLength={2} onChange={(e) => setSt(e.target.value)} /></Field>
+            <Field label="Work performed in" hint={areaOn ? "Defaults to your selected location" : undefined}>
+              <Select value={stateValue} onChange={(e) => setSt(e.target.value)}>
+                <option value="">Any state</option>
+                {US_STATES.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
             <Field label="Posted in last (days)"><Input value={daysBack} inputMode="numeric" onChange={(e) => setDaysBack(e.target.value)} /></Field>
           </div>
           <div className="mt-4 flex items-center gap-3">
@@ -59,13 +74,26 @@ export function Discover() {
       {result && (
         <>
           <p className="mb-3 text-sm text-muted">{result.totalRecords} record(s) match; showing {result.opportunities.length + result.awards.length}. {result.note}</p>
+          {areaOn && (
+            <label className="mb-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={hideOutside} onChange={(e) => setHideOutside(e.target.checked)} /> Hide results outside my selected location
+            </label>
+          )}
           <ul className="space-y-3">
-            {result.opportunities.map((o) => (
+            {[...result.opportunities]
+              .filter((o) => !(areaOn && hideOutside && result.areaMatch[o.id]?.status === "fail"))
+              .sort((a, b) => (result.areaMatch[a.id]?.status === "pass" ? 0 : 1) - (result.areaMatch[b.id]?.status === "pass" ? 0 : 1))
+              .map((o) => (
               <li key={o.id} className="flex flex-wrap items-start justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4">
                 <div className="min-w-0 max-w-3xl">
                   <p className="font-medium">{o.title}</p>
                   <p className="mt-0.5 text-xs text-muted">{o.solicitationNumber || "no number"} · {o.agency} · due {fmtDate(o.dueDate)} · {o.location.city || "—"} {o.location.state}</p>
                   <p className="mt-2 flex flex-wrap gap-1.5">
+                    {areaOn && result.areaMatch[o.id] && (
+                      <Badge tone={result.areaMatch[o.id]!.status === "pass" ? "pass" : result.areaMatch[o.id]!.status === "fail" ? "fail" : "unknown"} >
+                        {result.areaMatch[o.id]!.status === "pass" ? "In your area" : result.areaMatch[o.id]!.status === "fail" ? "Outside your area" : "Location unclear"}
+                      </Badge>
+                    )}
                     <Badge tone={o.terms.setAside === "none" ? "pass" : "info"}>Set-aside: {o.terms.setAside}</Badge>
                     <Badge>{o.category}</Badge>
                   </p>

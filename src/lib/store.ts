@@ -7,7 +7,7 @@
  * PROTECTED. See AGENTS.project.md.
  */
 import { useSyncExternalStore } from "react";
-import { DEFAULT_INPUTS, DEFAULT_PROFILE, DEFAULT_SETTINGS, TEST_CASE_INPUTS, TEST_CASE_OPPORTUNITIES } from "@/engine";
+import { DEFAULT_INPUTS, DEFAULT_PROFILE, DEFAULT_SERVICE_AREA, DEFAULT_SETTINGS, TEST_CASE_INPUTS, TEST_CASE_OPPORTUNITIES } from "@/engine";
 import type { Inputs, Opportunity, Quote, Settings, Subcontractor } from "@/engine/types";
 
 export type PipelineStatus = "new" | "watching" | "quotes-requested" | "approved" | "bid-submitted" | "won" | "lost" | "passed";
@@ -57,6 +57,7 @@ function normalize(raw: Partial<AppState> | null | undefined): AppState {
     settings: {
       ...DEFAULT_SETTINGS,
       ...s,
+      serviceArea: { ...DEFAULT_SERVICE_AREA, ...(s.serviceArea ?? {}) },
       profile: { ...DEFAULT_PROFILE, ...(s.profile ?? {}) },
       contact: { ...DEFAULT_SETTINGS.contact, ...(s.contact ?? {}) },
     },

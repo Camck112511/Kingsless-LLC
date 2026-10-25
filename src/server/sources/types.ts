@@ -1,4 +1,4 @@
-import type { Opportunity } from "@/engine/types";
+import type { LocationMatch, Opportunity } from "@/engine/types";
 
 /** An award notice: shows who already wins this kind of work (a possible route in as their subcontractor). */
 export interface AwardLead {
@@ -14,6 +14,8 @@ export interface AwardLead {
 
 export interface DiscoveryResult {
   opportunities: Opportunity[];
+  /** For each opportunity id: is it inside the owner's selected location? Computed by the engine. */
+  areaMatch: Record<string, LocationMatch>;
   awards: AwardLead[];
   totalRecords: number;
   note: string;

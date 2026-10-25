@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   const body = await readJson(request, Schema, 10_000);
   if ("error" in body) return body.error;
   try {
-    const result = await discoverFromSam(body.data, process.env.SAM_GOV_API_KEY, new Date().toISOString().slice(0, 10));
+    const result = await discoverFromSam(body.data, process.env.SAM_GOV_API_KEY, new Date().toISOString().slice(0, 10), body.data.serviceArea);
     return ok(result);
   } catch (err) {
     if (err instanceof SourceError) return fail(err.status, err.message);
