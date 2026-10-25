@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default function LoginPage() {
   const cfg = adminStatus();
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4">
+    <main data-theme="console" className="console-glow flex min-h-dvh items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <Image src="/brand/logo-dark.webp" alt="Kingsless LLC" width={1002} height={535} priority className="mx-auto mb-6 h-32 w-auto" />
         <Card>

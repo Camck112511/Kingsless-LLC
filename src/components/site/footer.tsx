@@ -1,25 +1,47 @@
 import Image from "next/image";
+import Link from "next/link";
 import { site } from "@/content/site";
 import { PhoneButton } from "./phone-button";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-surface/40">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_auto] md:items-center">
-        <div className="flex items-center gap-4">
-          <Image src="/brand/logo-dark.webp" alt={site.name} width={1002} height={535} className="h-16 w-auto" />
-          <p className="max-w-xs text-sm text-muted">{site.tagline}</p>
+    <footer className="bg-footer text-footer-ink">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
+        <div>
+          <Image src="/brand/logo-dark.webp" alt={site.name} width={1002} height={535} className="h-20 w-auto" />
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-footer-muted">{site.tagline}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {site.contactEmail && (
-            <a href={`mailto:${site.contactEmail}`} className="rounded-xl border border-line px-5 py-2.5 text-sm font-semibold transition hover:bg-surface-2">
-              Email
-            </a>
-          )}
-          {site.hasPhone && <PhoneButton />}
+        <nav aria-label="Footer">
+          <p className="text-xs font-semibold uppercase tracking-widest text-footer-muted">Company</p>
+          <ul className="mt-4 space-y-2 text-sm">
+            {site.nav.map((item) => (
+              <li key={item.href}>
+                <Link href={item.href} className="transition hover:text-[var(--gold-hi)]">
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-footer-muted">Contact</p>
+          <ul className="mt-4 space-y-3 text-sm">
+            {site.contactEmail && (
+              <li>
+                <a href={`mailto:${site.contactEmail}`} className="break-all transition hover:text-[var(--gold-hi)]">
+                  {site.contactEmail}
+                </a>
+              </li>
+            )}
+            {site.hasPhone && (
+              <li>
+                <PhoneButton variant="onDark" />
+              </li>
+            )}
+          </ul>
         </div>
       </div>
-      <p className="border-t border-line px-4 py-4 text-center text-xs text-muted sm:px-6">
+      <p className="border-t border-footer-line px-4 py-5 text-center text-xs text-footer-muted sm:px-6">
         &copy; {new Date().getFullYear()} {site.name}. All rights reserved.
       </p>
     </footer>

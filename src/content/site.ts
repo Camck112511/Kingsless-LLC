@@ -21,22 +21,31 @@ export const site = {
   ],
   hero: {
     eyebrow: "Project and procurement management",
-    title: "You get one point of contact. We bring the right specialists.",
+    title: "One accountable partner for work that needs specialists.",
     body:
-      "Kingsless LLC takes responsibility for getting a job done. We define the scope, qualify the specialist companies who will perform the work, and manage delivery so you deal with one accountable partner instead of many.",
-    primary: { href: "/contact", label: "Start a conversation" },
-    secondary: { href: "/services", label: "See how we work" },
+      "Kingsless LLC defines the scope, qualifies the specialist companies who perform the work, and manages delivery, so you deal with one accountable partner instead of many.",
+    primary: { href: "/contact", label: "Contact us" },
+    secondary: { href: "/services", label: "Our services" },
   },
+  /** The three-step picture shown beside the hero headline. */
+  engagement: [
+    { tag: "You", title: "Your requirements", body: "The work, the location, the timeline and any constraints." },
+    { tag: "Kingsless", title: "Scope, firm price, accountability", body: "One written scope and price. We stay responsible for the result." },
+    { tag: "Partners", title: "Vetted specialists", body: "Licensed, insured, referenced and confirmed available." },
+  ],
   pillars: [
     {
+      icon: "scope",
       title: "Scoped before it starts",
       body: "We write down what is included, what is not, and what done looks like, so there are no surprises on price or schedule.",
     },
     {
+      icon: "shield",
       title: "Specialists, vetted",
       body: "Partners are checked for the right licenses, insurance, and relevant experience before they touch your job.",
     },
     {
+      icon: "handshake",
       title: "Accountable to you",
       body: "We stay on the hook for quality and delivery. If something slips, you call us, not a chain of subcontractors.",
     },
@@ -49,21 +58,36 @@ export const site = {
   ],
   services: [
     {
+      icon: "project",
       title: "Project management",
       body: "End-to-end coordination of multi-party work: scheduling, partner management, quality checks, and reporting.",
       points: ["Scope-of-work development", "Partner coordination", "Progress reporting"],
     },
     {
+      icon: "document",
       title: "Procurement support",
       body: "Help responding to and managing public and private solicitations with clear, compliant proposals.",
       points: ["Solicitation review", "Compliance checklists", "Bid and quote preparation"],
     },
     {
+      icon: "check",
       title: "Partner vetting",
       body: "A repeatable process for confirming that a company can actually do the job before it is hired.",
       points: ["License and insurance verification", "Reference checks", "Capacity and pricing confirmation"],
     },
   ],
+  standards: {
+    title: "How we qualify the companies we work with",
+    body: "A company appearing in a directory is not proof it can do the job. Before a partner is engaged, we confirm each of these:",
+    items: [
+      "Required licenses, checked with the issuing authority",
+      "Insurance certificates on file, at the limits the work requires",
+      "Relevant completed projects, with references we can call",
+      "Capacity and availability for your dates",
+      "A firm written price for your exact scope",
+      "Agreement to work under a written subcontract",
+    ],
+  },
   contact: {
     title: "Tell us what you need done",
     body: "Send a short description of the work, where it is, and when you need it. We will reply with questions or a scope and price.",

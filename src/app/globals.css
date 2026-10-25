@@ -1,11 +1,88 @@
 @import "tailwindcss";
 
 /*
-  DESIGN TOKENS: re-theme the whole site by editing these values.
-  Brand: black, antique gold and brushed silver, taken from the Kingsless logo. The site is dark on purpose.
-  Semantic names (surface, ink, muted, line, accent, pass, fail, unknown) are used everywhere; avoid hard-coded colors.
+  DESIGN TOKENS. Re-theme by editing these values; components use only the semantic names.
+
+  Three themes:
+   1. PUBLIC SITE, light  (default)         : white, charcoal text, gold accents. Corporate.
+   2. PUBLIC SITE, dark   (OS dark mode)     : neutral grey, NOT black. The header bar goes grey so the logo's black
+                                               letters stay readable.
+   3. CONSOLE (/admin), always dark          : the black-and-gold look. Selected by a [data-theme="console"] element
+                                               anywhere on the page (see html:has(...) below), whatever the OS setting.
 */
 :root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f5f7;
+  --ink: #14161c;
+  --muted: #5a5f6b;
+  --line: #e3e5ea;
+  --accent: #8a5d0c;
+  --accent-ink: #14161c;
+  --accent-soft: #f7efd9;
+  --gold-hi: #f0c55b;
+  --gold-lo: #b5791f;
+  --silver-hi: #f4f5f7;
+  --silver-lo: #9a9ca4;
+
+  /* header bar: white in light mode. The official logo has black letters, so the bar must stay light. */
+  --header-bg: #ffffff;
+  --header-ink: #14161c;
+  --header-muted: #3f444f;
+  --header-line: #e3e5ea;
+
+  /* footer: charcoal in both modes */
+  --footer-bg: #14161a;
+  --footer-ink: #eceef1;
+  --footer-muted: #9aa0ab;
+  --footer-line: #2a2d34;
+
+  --pass: #17794a;
+  --pass-soft: #def3e7;
+  --fail: #b3261e;
+  --fail-soft: #fbe3e1;
+  --unknown: #8a6100;
+  --unknown-soft: #fbefcb;
+  --info: #2a5db0;
+  --info-soft: #e1ebfa;
+
+  --display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1d21;
+    --surface: #23262b;
+    --surface-2: #2b2e34;
+    --ink: #eceef1;
+    --muted: #a4a9b3;
+    --line: #393d45;
+    --accent: #e0b04a;
+    --accent-ink: #14161c;
+    --accent-soft: #33291a;
+
+    /* grey header so the black letters of the logo stay legible (about 10:1 contrast) */
+    --header-bg: #b4b7be;
+    --header-ink: #0d0e11;
+    --header-muted: #20232a;
+    --header-line: #979ba3;
+
+    --pass: #5fd39a;
+    --pass-soft: #12281f;
+    --fail: #ff8a80;
+    --fail-soft: #331a18;
+    --unknown: #f0c35a;
+    --unknown-soft: #332812;
+    --info: #86aef0;
+    --info-soft: #172338;
+  }
+}
+
+/* CONSOLE: the black-and-gold theme, always dark. Applies to the whole page (including <body>) whenever a
+   [data-theme="console"] element is present, which the /admin layouts add. */
+html:has([data-theme="console"]) {
   color-scheme: dark;
   --bg: #0b0b0d;
   --surface: #141417;
@@ -16,10 +93,6 @@
   --accent: #d9a441;
   --accent-ink: #0b0b0d;
   --accent-soft: #2a2113;
-  --gold-hi: #f0c55b;
-  --gold-lo: #b5791f;
-  --silver-hi: #f4f5f7;
-  --silver-lo: #9a9ca4;
   --pass: #5fd39a;
   --pass-soft: #12281f;
   --fail: #ff8a80;
@@ -28,6 +101,7 @@
   --unknown-soft: #332812;
   --info: #86aef0;
   --info-soft: #172338;
+  --display: ui-serif, Georgia, "Times New Roman", serif;
   --radius: 14px;
 }
 
@@ -41,6 +115,14 @@
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-header: var(--header-bg);
+  --color-header-ink: var(--header-ink);
+  --color-header-muted: var(--header-muted);
+  --color-header-line: var(--header-line);
+  --color-footer: var(--footer-bg);
+  --color-footer-ink: var(--footer-ink);
+  --color-footer-muted: var(--footer-muted);
+  --color-footer-line: var(--footer-line);
   --color-pass: var(--pass);
   --color-pass-soft: var(--pass-soft);
   --color-fail: var(--fail);
@@ -50,7 +132,7 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: ui-serif, Georgia, "Times New Roman", serif;
+  --font-display: var(--display);
   --radius-card: var(--radius);
 }
 
@@ -88,18 +170,30 @@ body {
   }
 }
 
-/* Brand finishes. Gold is for actions and marks; silver is for the wordmark. */
+/* Brand finishes. Gold is for actions; the gradient button always carries dark text. */
 .btn-gold {
   background-image: linear-gradient(180deg, var(--gold-hi), var(--gold-lo));
-  color: var(--accent-ink);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 8px 24px -8px rgb(217 164 65 / 0.5);
+  color: #14161c;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.35) inset, 0 6px 18px -8px rgb(181 121 31 / 0.55);
 }
 .btn-gold:hover {
-  filter: brightness(1.07);
+  filter: brightness(1.06);
+}
+.btn-dark {
+  background: #14161c;
+  color: #ffffff;
+}
+.btn-dark:hover {
+  background: #2a2d35;
 }
 .text-silver {
   background-image: linear-gradient(180deg, var(--silver-hi), var(--silver-lo));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* Console only: the glowing black-and-gold backdrop used behind the sign-in screen. */
+.console-glow {
+  background-image: radial-gradient(60% 50% at 50% 30%, rgb(217 164 65 / 0.18), transparent 70%), radial-gradient(40% 40% at 85% 90%, rgb(217 164 65 / 0.08), transparent 70%);
 }

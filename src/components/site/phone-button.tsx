@@ -9,14 +9,14 @@ const PhoneIcon = () => (
 );
 
 /** "Phone" button. Pressing it reveals the number as a tap-to-call link. */
-export function PhoneButton({ className = "" }: { className?: string }) {
+export function PhoneButton({ className = "", variant = "default" }: { className?: string; variant?: "default" | "onDark" }) {
   const [phone, setPhone] = useState<{ display: string; tel: string } | null | undefined>(undefined);
   const [pending, start] = useTransition();
 
   return (
     <div aria-live="polite" className="inline-flex flex-col items-start gap-2">
       {phone ? (
-        <a href={`tel:${phone.tel}`} className={`btn-gold inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold ${className}`}>
+        <a href={`tel:${phone.tel}`} className={`btn-gold inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-semibold ${className}`}>
           <PhoneIcon /> {phone.display}
         </a>
       ) : (
@@ -24,12 +24,12 @@ export function PhoneButton({ className = "" }: { className?: string }) {
           type="button"
           disabled={pending}
           onClick={() => start(async () => setPhone(await revealPhone()))}
-          className={`inline-flex items-center gap-2 rounded-xl border border-accent/60 px-5 py-2.5 text-sm font-semibold text-accent transition hover:bg-accent-soft disabled:opacity-60 ${className}`}
+          className={`inline-flex items-center gap-2 rounded-md border px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${variant === "onDark" ? "border-[var(--gold-hi)]/60 text-[var(--gold-hi)] hover:bg-white/10" : "border-accent/70 text-accent hover:bg-accent-soft"} ${className}`}
         >
           <PhoneIcon /> {pending ? "One moment…" : "Phone"}
         </button>
       )}
-      {phone === null && <p className="text-xs text-muted">The phone number isn&apos;t available right now. Please email us instead.</p>}
+      {phone === null && <p className={`text-xs ${variant === "onDark" ? "text-footer-muted" : "text-muted"}`}>The phone number isn&apos;t available right now. Please email us instead.</p>}
     </div>
   );
 }
