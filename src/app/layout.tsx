@@ -2,8 +2,17 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { site } from "@/content/site";
 
+/** The public address. Link previews and share images are built from it. NEXT_PUBLIC_SITE_URL overrides it. */
+const siteUrl = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://kingsless.com");
+  } catch {
+    return new URL("https://kingsless.com"); // a malformed override must not break the build
+  }
+})();
+
 export const metadata: Metadata = {
-  metadataBase: process.env.NEXT_PUBLIC_SITE_URL ? new URL(process.env.NEXT_PUBLIC_SITE_URL) : undefined,
+  metadataBase: siteUrl,
   title: { default: site.name, template: `%s | ${site.name}` },
   description: site.description,
 };

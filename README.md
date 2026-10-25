@@ -20,10 +20,18 @@ Stack: Next.js 16 (App Router), TypeScript, Tailwind CSS 4. Deploys on Vercel wi
 | `SAM_GOV_API_KEY` | optional | Live federal discovery. Free: SAM.gov → your profile → Public API Key. Daily request limits apply. |
 | `ANTHROPIC_API_KEY` | optional | Lets the AI reader pull clauses out of pasted solicitation text. Default model `claude-opus-5-5`; override with `ANTHROPIC_MODEL`. |
 | `CONTACT_PHONE` | optional | Overrides the public phone number. The default, (512) 217-7788, is in `src/content/phone.ts`. Visitors only see the number after pressing the **Phone** button; it is never in the page HTML. A malformed value shows "unavailable" rather than a wrong number. Redeploy after setting it. |
-| `NEXT_PUBLIC_SITE_URL` | optional | Your site's address (e.g. `https://kingsless.org`), used for link previews when the site is shared. |
+| `NEXT_PUBLIC_SITE_URL` | optional | Overrides the site's public address, used for link previews. Default: `https://kingsless.com`. |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | optional | Overrides the public email. Default: `Cullenmckinney@kingsless.org`. Read at build time. |
 
 **If `ADMIN_PASSWORD` or `AUTH_SECRET` is missing or too short, the admin is disabled and nobody can sign in** (fails closed). The development credentials in `.env.development` are rejected in production.
+
+## Custom domain (kingsless.com)
+
+The site is set up to be served at **https://kingsless.com**. Connecting the domain happens in Vercel and at the domain registrar, not in this repo:
+
+1. Vercel → your Kingsless project → **Settings → Domains** → add `kingsless.com`, then add `www.kingsless.com` and set it to redirect to `kingsless.com`.
+2. At the registrar, add the DNS records Vercel shows on that screen. Typically an **A** record `@` → `76.76.21.21` and a **CNAME** `www` → `cname.vercel-dns.com`. Prefer these over switching nameservers, which would wipe any existing records (such as email MX records).
+3. Wait for Vercel to show **Valid Configuration**. HTTPS is issued automatically.
 
 ## Using the engine
 
