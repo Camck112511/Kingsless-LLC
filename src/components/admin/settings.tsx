@@ -5,6 +5,7 @@ import { actions, useAppState } from "@/lib/store";
 import type { Settings as S } from "@/engine/types";
 import { NumberField } from "./fields";
 import { LocationPicker } from "./location-picker";
+import { BackgroundModeCard } from "./background-card";
 import { TargetingCard } from "./targeting";
 
 export function Settings() {
@@ -91,6 +92,8 @@ export function Settings() {
             </Field>
           </div>
         </Card>
+
+        <BackgroundModeCard />
 
         <Card>
           <CardTitle>Your data</CardTitle>

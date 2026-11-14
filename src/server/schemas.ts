@@ -5,12 +5,17 @@
  * PROTECTED. See AGENTS.project.md.
  */
 import { z } from "zod";
+import type { AppState } from "@/lib/types";
 import type {
+  AutoAuthorization,
+  AutoEvent,
+  AutoProgress,
+  BidRecord,
   CompanyProfile,
   CostItems,
-  BidRecord,
   Inputs,
   Opportunity,
+  PriceChoice,
   Quote,
   ServiceArea,
   Settings,
@@ -18,6 +23,7 @@ import type {
   SubTerms,
   Targeting,
   Terms,
+  WinBriefing,
 } from "@/engine/types";
 
 const money = z.number().finite().min(0).max(10_000_000_000);
@@ -201,7 +207,32 @@ export const SettingsSchema: z.ZodType<Settings> = z.object({
   }),
 });
 
+const AutoAuthSchema: z.ZodType<AutoAuthorization> = z.object({
+  authorizedAt: z.string().max(40),
+  floorUsd: money.nullable(),
+  ceilingUsd: money.nullable(),
+  allowEstimateOnly: z.boolean(),
+  attestedListing: z.boolean(),
+  submissionEmail: z.string().max(320),
+  paused: z.boolean(),
+});
+
+const AutoProgressSchema: z.ZodType<AutoProgress> = z.object({
+  phase: z.enum(["authorized", "needs-you", "ready-to-upload", "submitted", "watching", "won", "lost", "stopped", "expired"]),
+  lastRunAt: z.string().max(40).nullable(),
+  summary: z.string().max(2000),
+  needs: z.array(z.string().max(1500)).max(30),
+  notifiedKey: z.string().max(200),
+  pageHash: z.string().max(40),
+  subResearchAt: z.string().max(40).nullable(),
+  compsAt: z.string().max(40).nullable(),
+  // Written only by the server, so shape-checked loosely: it is displayed, never fed back into the rules.
+  pricing: z.custom<PriceChoice>((v) => typeof v === "object" && v !== null).nullable(),
+});
+
 export const BidRecordSchema: z.ZodType<BidRecord> = z.object({
+  auto: z.object({ auth: AutoAuthSchema, progress: AutoProgressSchema }).nullable().optional(),
+  briefing: z.custom<WinBriefing>((v) => typeof v === "object" && v !== null).nullable().optional(),
   prep: z.object({
     validityDays: z.number().int().min(1).max(730),
     approach: z.string().max(20_000),
@@ -351,4 +382,50 @@ export const SubResearchRequestSchema = z.object({
   settings: SettingsSchema,
   count: z.number().int().min(3).max(12).default(8),
   extra: z.string().max(400).default(""),
+});
+
+/* ------------------------------ autopilot + sync ------------------------------ */
+
+const AutoEventSchema: z.ZodType<AutoEvent> = z.object({
+  id: z.string().min(1).max(120),
+  at: z.string().max(40),
+  itemId: z.string().max(120).nullable(),
+  kind: z.enum(["authorized", "info", "price", "needs-you", "ready", "submitted", "award", "won", "lost", "stopped", "error"]),
+  title: z.string().max(300),
+  detail: z.string().max(3000),
+});
+
+export const PipelineItemSchema = z.object({
+  opportunity: OpportunitySchema,
+  inputs: InputsSchema,
+  status: z.enum(["new", "watching", "quotes-requested", "approved", "bid-submitted", "won", "lost", "passed"]),
+  notes: z.string().max(20_000),
+  addedAt: z.string().max(40),
+  updatedAt: z.string().max(40),
+  aiReview: z.custom<NonNullable<AppState["items"][number]["aiReview"]>>((v) => typeof v === "object" && v !== null).nullable().optional(),
+  bid: BidRecordSchema.optional(),
+});
+
+export const AppStateSchema: z.ZodType<AppState> = z.object({
+  version: z.literal(1),
+  settings: SettingsSchema,
+  items: z.array(PipelineItemSchema).max(500),
+  subcontractors: z.array(SubcontractorSchema).max(1000),
+  quotes: z.array(QuoteSchema).max(5000),
+  events: z.array(AutoEventSchema).max(400),
+  autopilotPaused: z.boolean(),
+});
+
+/** The browser pushes its whole state, says which cloud revision it started from, and which autopilot patches it has applied. */
+export const StatePutSchema = z.object({
+  baseRev: z.number().int().min(0),
+  state: AppStateSchema,
+  acked: z.array(z.string().max(120)).max(1000).default([]),
+});
+
+export const AutopilotRunSchema = z.object({
+  itemId: z.string().max(120).optional(),
+  briefingOnly: z.boolean().default(false),
+  /** Only used when there is no cloud store: the browser's own state. */
+  state: AppStateSchema.optional(),
 });

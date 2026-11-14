@@ -5,8 +5,11 @@ import type { Verdict } from "@/engine/types";
 import { fmtDate, fmtPct, fmtUsd } from "@/components/format";
 import { Badge, Button, Card, Notice, PageHeader, Select, Stat, cn } from "@/components/ui";
 import { actions, STATUS_LABELS, useAppState, type PipelineStatus } from "@/lib/store";
+import { runAutopilotNow } from "@/lib/cloud";
 import { useAnalyses } from "@/lib/use-analyses";
 import { US_STATES } from "@/lib/us-states";
+import { ActivityFeed, PhaseBadge, RunControls } from "./autopilot/panel";
+import { AuthorizeDialog } from "./autopilot/authorize-dialog";
 import { LocationPicker } from "./location-picker";
 import { FitMeter, isRecommended, RecommendationBadge } from "./recommendation";
 import { VerdictBadge } from "./verdict";
@@ -26,6 +29,9 @@ export function Dashboard() {
   const view = useAnalyses(state);
   const [filter, setFilter] = useState<Filter>("all");
   const [editingArea, setEditingArea] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [authorizing, setAuthorizing] = useState(false);
+  const [authMsg, setAuthMsg] = useState<string | null>(null);
 
   const itemsById = useMemo(() => new Map((state?.items ?? []).map((i) => [i.opportunity.id, i])), [state]);
   const counts = useMemo(() => {
@@ -40,6 +46,10 @@ export function Dashboard() {
   const rows = view.ordered.filter((a) => (filter === "all" ? true : filter === "picks" ? isRecommended(a.recommendation) : a.verdict === filter));
 
   if (!state) return <p className="text-sm text-muted">Loading your pipeline…</p>;
+
+  const autoItems = state.items.filter((i) => i.bid?.auto);
+  const autoCount = (phases: string[]) => autoItems.filter((i) => phases.includes(i.bid!.auto!.progress.phase)).length;
+  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
   const missingTests = state.items.length === 0;
   const area = state.settings.serviceArea;
@@ -111,6 +121,46 @@ export function Dashboard() {
         </section>
       )}
 
+      {(autoItems.length > 0 || state.events.length > 0) && (
+        <Card className="mb-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted">Autopilot</p>
+              <p className="mt-0.5 text-sm">
+                {state.autopilotPaused ? <strong className="text-fail">All autopilot activity is paused.</strong> : <>Working on <strong>{autoCount(["authorized"])}</strong> · needs you <strong>{autoCount(["needs-you"])}</strong> · ready to upload <strong>{autoCount(["ready-to-upload"])}</strong> · submitted <strong>{autoCount(["submitted", "watching"])}</strong> · won <strong>{autoCount(["won"])}</strong></>}
+              </p>
+            </div>
+            <RunControls />
+          </div>
+          <div className="mt-4"><ActivityFeed events={state.events} limit={6} empty="No activity yet." /></div>
+        </Card>
+      )}
+
+      {authMsg && <Notice tone="pass" className="mb-4">{authMsg}</Notice>}
+      {selected.size > 0 && (
+        <div className="sticky top-14 z-20 mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent bg-surface px-4 py-3 shadow-lg">
+          <p className="text-sm font-medium">{selected.size} bid{selected.size === 1 ? "" : "s"} selected</p>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+            <Button variant="primary" onClick={() => setAuthorizing(true)}>Let the engine go after {selected.size === 1 ? "it" : "them"}…</Button>
+          </div>
+        </div>
+      )}
+      {authorizing && (
+        <AuthorizeDialog
+          ids={[...selected]}
+          analyses={view.byId}
+          onClose={(n) => {
+            setAuthorizing(false);
+            if (n > 0) {
+              setSelected(new Set());
+              setAuthMsg(`Authorized ${n} bid${n === 1 ? "" : "s"}. The engine is working on ${n === 1 ? "it" : "them"}: open the bid for details, or press Run autopilot now.`);
+              void runAutopilotNow();
+            }
+          }}
+        />
+      )}
+
       <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
         <Stat label="Capital available" value={fmtUsd(state.settings.availableCapitalUsd)} sub="Hard ceiling for any deal" />
         <Stat label="Bid-ready" value={counts["bid-ready"] ?? 0} tone="pass" />
@@ -159,9 +209,10 @@ export function Dashboard() {
           {view.error && <Notice tone="fail" className="mb-3">{view.error}</Notice>}
 
           <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line bg-surface">
-            <table className="w-full min-w-[960px] text-left text-sm">
+            <table className="w-full min-w-[1000px] text-left text-sm">
               <thead className="border-b border-line bg-surface-2 text-xs uppercase tracking-wide text-muted">
                 <tr>
+                  <th className="w-8 px-3 py-3"><span className="sr-only">Select</span></th>
                   <th className="px-4 py-3">Opportunity</th>
                   <th className="px-3 py-3">Verdict</th>
                   <th className="px-3 py-3">Fit</th>
@@ -180,6 +231,9 @@ export function Dashboard() {
                   const o = item.opportunity;
                   return (
                     <tr key={a.opportunityId} className="align-top transition hover:bg-surface-2/60">
+                      <td className="px-3 py-3">
+                        <input type="checkbox" aria-label={`Select ${o.title}`} disabled={!!item.bid?.auto || a.verdict === "reject"} checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
+                      </td>
                       <td className="px-4 py-3">
                         <Link href={`/admin/opportunities/${encodeURIComponent(o.id)}`} className="font-medium hover:text-accent">
                           {o.title}
@@ -188,6 +242,7 @@ export function Dashboard() {
                           {o.solicitationNumber || "no number"} · {o.agency || "unknown agency"}
                         </p>
                         {!o.provenance.verified && <Badge className="mt-1.5">Unverified listing</Badge>}
+                        {item.bid?.auto && <p className="mt-1.5"><PhaseBadge phase={item.bid.auto.progress.phase} /></p>}
                       </td>
                       <td className="px-3 py-3">
                         <div className="flex flex-col items-start gap-1">
@@ -218,7 +273,7 @@ export function Dashboard() {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted">
+                    <td colSpan={10} className="px-4 py-8 text-center text-muted">
                       Nothing in this filter.
                     </td>
                   </tr>

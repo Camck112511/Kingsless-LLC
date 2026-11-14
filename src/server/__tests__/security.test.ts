@@ -145,6 +145,18 @@ describe("admin API routes", () => {
   });
 
   it("analyze runs the engine on a posted pipeline", async () => {
+    // The seeded listings have real due dates and the server ignores a client date far from its own clock, so pin the
+    // clock to the day the listings were recorded; otherwise this test would age out as those dates pass.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-25T12:00:00Z"));
+    try {
+      await analyzeSeededPipeline();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  async function analyzeSeededPipeline() {
     const { analyze } = await routes();
     const { TEST_CASE_OPPORTUNITIES } = await import("@/engine");
     const { DEFAULT_SETTINGS, DEFAULT_INPUTS } = await import("@/engine/config");
@@ -166,5 +178,5 @@ describe("admin API routes", () => {
     expect(json.scripts["fw-26-0268"]?.status).toBe("withheld");
     // ranked: investigate before reject
     expect(json.analyses.at(-1)?.opportunityId).toBe("fw-26-0268");
-  });
+  }
 });

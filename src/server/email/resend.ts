@@ -23,6 +23,9 @@ export type SendResult = { ok: true; id: string } | { ok: false; error: string; 
 
 export const emailConfigured = (): boolean => Boolean(process.env.RESEND_API_KEY && process.env.BID_EMAIL_FROM);
 
+/** The Resend API address. A different one is honored ONLY outside production, so tests can use a local stand-in. */
+const apiBase = (): string => (process.env.NODE_ENV !== "production" && process.env.RESEND_API_BASE ? process.env.RESEND_API_BASE.replace(/\/$/, "") : "https://api.resend.com");
+
 export async function sendEmail(mail: OutboundEmail, fetchImpl: typeof fetch = fetch): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.BID_EMAIL_FROM;
@@ -30,7 +33,7 @@ export async function sendEmail(mail: OutboundEmail, fetchImpl: typeof fetch = f
 
   let res: Response;
   try {
-    res = await fetchImpl("https://api.resend.com/emails", {
+    res = await fetchImpl(`${apiBase()}/emails`, {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       signal: AbortSignal.timeout(30_000),

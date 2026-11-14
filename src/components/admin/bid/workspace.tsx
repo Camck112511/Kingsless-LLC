@@ -7,6 +7,7 @@ import { Badge, Card, Notice, cn } from "@/components/ui";
 import { bidOf, useAppState } from "@/lib/store";
 import { useBidPlan } from "@/lib/use-bid-plan";
 import type { Capabilities } from "@/server/views";
+import { AutopilotPanel } from "../autopilot/panel";
 import { RecommendationBadge } from "../recommendation";
 import { VerdictBadge } from "../verdict";
 import { CheckStep, DocsStep, FitStep, PriceStep, ProveStep, QuotesStep, ResultStep, SubmitStep, WinStep, type StepProps } from "./steps";
@@ -66,6 +67,7 @@ export function BidWorkspace({ id, caps }: { id: string; caps: Capabilities }) {
         </div>
       </div>
 
+      {plan && <AutopilotPanel item={item} analysis={plan.analysis} />}
       <Notice tone="info">
         The console drafts, checks and tracks. <strong>You decide and you sign.</strong> It never sends anything to an agency or a subcontractor unless you press the send button on the final step, and only when every rule is proven.
       </Notice>

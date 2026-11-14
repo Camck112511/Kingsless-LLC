@@ -6,6 +6,7 @@ import { Badge, Button, Card, CardTitle, Notice, Select, Textarea } from "@/comp
 import { actions, STATUS_LABELS, useAppState, type PipelineStatus } from "@/lib/store";
 import { useAnalyses } from "@/lib/use-analyses";
 import type { Capabilities } from "@/server/views";
+import { AutopilotPanel } from "../autopilot/panel";
 import { MarketPanel } from "../market";
 import { FitPanel, RecommendationBadge } from "../recommendation";
 import { VerdictBadge } from "../verdict";
@@ -110,6 +111,7 @@ export function OpportunityDetail({ id, caps }: { id: string; caps: Capabilities
         <Card><p className="text-sm text-muted">{view.loading ? "Running the engine…" : "No analysis yet."}</p></Card>
       )}
 
+      <AutopilotPanel item={item} analysis={a} />
       {a && <FitPanel analysis={a} />}
       <AiReviewPanel state={state} id={id} aiEnabled={caps.ai} />
       {a && <GatesPanel analysis={a} />}

@@ -215,4 +215,21 @@ export const RULES = {
 
   /** A quote older than this (days) is treated as expired when it has no explicit validity date. */
   quoteDefaultValidDays: 30,
+
+  /**
+   * Autopilot limits. These bound what the engine may do on its own, whatever it was authorized to do.
+   * A bid on an estimate (no firm quote) also needs at least `minCandidates` subcontractors on file who offer the service,
+   * work in the area, have not declined and (when a license is required) list one.
+   */
+  autopilot: {
+    minCandidates: 2,
+    maxSubmissionsPerDay: 5,
+    priceSteps: 40,
+    /** Never price above the expected market price unless the owner raised the ceiling. */
+    ceilingOverMarket: 1.0,
+    /** Federal comparables needed before their median may stand in for a missing market price. */
+    compsMinCount: 5,
+    researchEveryDays: 7,
+    maxDocumentsToRead: 3,
+  },
 } as const;

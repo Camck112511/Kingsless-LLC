@@ -486,6 +486,10 @@ export interface BidRecord {
   prep: BidPrep;
   submission: Submission | null;
   outcome: BidOutcome | null;
+  /** Present once the owner has authorized the engine to pursue this bid on its own (see AutoBid). */
+  auto?: AutoBid | null;
+  /** Built when the bid is won, whoever recorded the win: what you now owe and who to sell the contract to. */
+  briefing?: WinBriefing | null;
 }
 
 export type StepStatus = "done" | "todo" | "blocked" | "locked";
@@ -536,4 +540,102 @@ export interface BidPackage {
   digest: string;
   /** Things the owner still has to fill in, found in the agency documents. */
   placeholders: string[];
+}
+
+/* -------------------------------- Autopilot -------------------------------- */
+
+export type AutoPhase = "authorized" | "needs-you" | "ready-to-upload" | "submitted" | "watching" | "won" | "lost" | "stopped" | "expired";
+
+/** What the owner allowed, once, for one bid. Nothing the engine does on its own goes beyond this. */
+export interface AutoAuthorization {
+  authorizedAt: string;
+  /** Never bid below this. null = the engine's walk-away price. */
+  floorUsd: number | null;
+  /** Never bid above this. null = the expected market price. */
+  ceilingUsd: number | null;
+  /** May bid on the owner's sub-price estimate when no firm quote exists, provided enough licensed, local subcontractors are on file. */
+  allowEstimateOnly: boolean;
+  /** The owner read the official solicitation and the facts shown for this bid match it. */
+  attestedListing: boolean;
+  /** Where to email the bid when the listing does not say. */
+  submissionEmail: string;
+  paused: boolean;
+}
+
+/** The price the engine settled on, and why. */
+export interface PriceChoice {
+  priceUsd: number;
+  winProbability: number;
+  profitUsd: number;
+  marginRate: number;
+  expectedProfitUsd: number;
+  marketUsd: number | null;
+  floorUsd: number;
+  ceilingUsd: number;
+  /** A handful of the prices it weighed, lowest first. */
+  considered: Array<{ priceUsd: number; winProbability: number; profitUsd: number; expectedProfitUsd: number }>;
+  note: string;
+}
+
+export interface RankedSub {
+  name: string;
+  source: "directory" | "web" | "federal-records";
+  /** 0-100. Directory companies with evidence outrank leads; leads outrank unproven names. */
+  score: number;
+  label: VerificationLabel | "lead";
+  reasons: string[];
+  concerns: string[];
+  contact: string;
+  website: string | null;
+  sourceUrl: string | null;
+  /** Directory id when the company is already on file. */
+  subcontractorId: string | null;
+}
+
+export interface WinBriefing {
+  generatedOn: string;
+  headline: string;
+  contract: Array<[string, string]>;
+  /** What the LLC is now on the hook for. */
+  obligations: string[];
+  risks: string[];
+  /** What to offer a subcontractor. The maximum is never shown to them. */
+  offer: { awardUsd: number | null; openingOfferUsd: number | null; maxSubPriceUsd: number | null; profitAtOpeningUsd: number | null; profitAtMaxUsd: number | null };
+  subs: RankedSub[];
+  nextSteps: string[];
+  /** Draft message to send each candidate. */
+  offerMessage: { subject: string; body: string };
+}
+
+export interface AutoProgress {
+  phase: AutoPhase;
+  lastRunAt: string | null;
+  /** One line: what the engine decided last time and why. */
+  summary: string;
+  /** What only the owner can fix. */
+  needs: string[];
+  /** The last thing the owner was emailed about, so it is not repeated every run. */
+  notifiedKey: string;
+  /** Fingerprint of the official listing text, to notice when it changes. */
+  pageHash: string;
+  subResearchAt: string | null;
+  compsAt: string | null;
+  pricing: PriceChoice | null;
+}
+
+export interface AutoBid {
+  auth: AutoAuthorization;
+  progress: AutoProgress;
+}
+
+export type AutoEventKind = "authorized" | "info" | "price" | "needs-you" | "ready" | "submitted" | "award" | "won" | "lost" | "stopped" | "error";
+
+/** One line in the activity log. */
+export interface AutoEvent {
+  id: string;
+  at: string;
+  itemId: string | null;
+  kind: AutoEventKind;
+  title: string;
+  detail: string;
 }

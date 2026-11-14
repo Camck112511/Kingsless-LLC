@@ -125,6 +125,20 @@ Recommendation tiers apply in this order: a failed gate or the avoid list is **n
 
 `src/engine/bid-docs.ts` builds the documents as structured content. Facts come only from the listing, the profile and what the owner typed; anything missing becomes `[… – to complete]`. Agency documents never contain the subcontractor price, margin, cash position or walk-away price (a test enforces it).
 
+## Autopilot
+
+`src/engine/price-strategy.ts` **recommendPrice**: for each candidate price from the walk-away line (or the owner's floor) to the ceiling (default: the expected market price), run the full analysis at that price and keep the highest expected profit that still passes every rule. A ceiling below the walk-away line, a missing market price or sub estimate, or no price that passes every rule returns *no price and a reason*, never a guess.
+
+`src/engine/autopilot.ts` **decide**: given the owner's authorization, the analysis at the chosen price, the document package and the directory, it returns one action: `submit`, `ready-to-upload`, `needs-you`, `stop`, `expire` or `wait`. A failed gate stops it for good; an unproven rule, a missing estimate/quote, a price outside the limits, a blank in the documents or too few plausible subcontractors asks the owner; the daily cap (5) waits; only when everything passes **and** the listing's bid address is known **and** email is set up does it submit. **staffingCheck** counts directory companies that offer the service, work in the area, have not declined and (if a license is required) list one; estimate-only bids need at least 2.
+
+`src/engine/sub-rank.ts` **rankSubs**: one scale for three sources. Directory companies (fit score + verification + quote) outrank AI-found leads (capped at 84; points for services named in the scope, being in the state, a stated license, public contact, similar work), which outrank federal-subaward names (capped at 72; count, recency, state, size). The same company found twice is merged. Anyone who declined is dropped. A lead is never called verified.
+
+`src/engine/briefing.ts` **buildWinBriefing**: contract facts, what the LLC now owes, risks, the offer (open at the sub estimate or firm quote; ceiling is the engine's max sub price; profit at each; the award itself is marked private), the ranked list and the offer message (which never contains the award or the ceiling).
+
+Server side (`src/server/autopilot/`): `run.ts` is the pass (every outside call is injected, so it is tested offline), `official.ts` reads the listing and linked PDFs, `award-watch.ts` checks SAM.gov award notices and the agency page, `service.ts` takes a lock, runs, and stores the result. The pass is idempotent: running it twice sends nothing twice and repeats no notification.
+
+**Sync model.** The browser is the editor and pushes its whole state (`PUT /api/admin/state`, refused with 409 if another browser pushed first). The server's autopilot never rewrites the browser's data: it records changes as *patches* in an outbox, which the browser applies and acknowledges on its next push (`src/lib/patches.ts`). An item patch applies only if the bid has not been edited since the autopilot read it, so the owner's edit always wins. Storage is one private Vercel Blob document written with the blob's ETag (`ifMatch`), so two writers cannot silently overwrite each other.
+
 ## Subcontractor shortlist
 
 Per opportunity each candidate is checked for service match, geography, similar projects, verified license (if required), insurance ≥ required limit with certificate (if required), bonding (if required), confirmed capacity, a firm quote for this scope, and confirmed willingness to subcontract under your agreement.
@@ -159,7 +173,9 @@ Behaviour pinned by tests: excellent economics cannot rescue unknown or prohibit
 
 * The sandbox this was built in could not reach SAM.gov, LAMP, Fort Worth or Bonfire (egress blocked), so the **SAM.gov connector is written to the public API documentation but has not run against the live API**, and the three listings are marked **unverified**. A web search corroborated Fort Worth 26-0268 through an aggregator (which also mentioned a mandatory pre-submittal meeting on 2026-10-22 and a five-year experience requirement, both unconfirmed). It found nothing for LAMP RFP-0003/0005. Check each on the official portal and tick "confirmed" in the app.
 * The AI reader, web scout, AI second opinion and subcontractor research have not been called against the live API (no key in the build environment). Their prompts, link checks (a scouted link must be one the search returned), quote checks and result handling are unit-tested, and the screens were exercised with faked responses.
-* USAspending.gov (past awards and subawards), Resend (email) and the SSRF-safe link reader were written to their public documentation and tested against fixtures, stubs and a local server; none has been run against the live service.
+* USAspending.gov (past awards and subawards), Resend (email), the Vercel Blob store and the SSRF-safe link reader were written to their public documentation and tested against fixtures, stubs, an in-memory store and a local server; none has been run against the live service from the build environment.
+* The price strategy is only as good as the win-chance heuristic it maximizes, and that heuristic is not fitted to data. Treat the chosen price as a reasoned starting point and calibrate it from real results.
+* Award detection is reliable only for federal bids (SAM.gov award notices). For everything else the engine can only notice that the agency's page names you; you confirm the result.
 * Win probability multipliers are reasoned starting points, not fitted to data.
 * Legal references (13 CFR 125.6, Texas Ch. 1702) flag questions to ask; they are not legal advice.
 * Fort Worth (Bonfire), LAMP and Texas SmartBuy have no feed the engine uses: add their listings by hand and paste the text.

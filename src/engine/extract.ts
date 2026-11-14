@@ -331,3 +331,24 @@ export function applyPatch(base: Terms, patch: TermsPatch, opts: { overwrite?: b
   }
   return next;
 }
+
+/**
+ * The address a solicitation says to email bids to, when it says so unambiguously. An email near a question or contact
+ * cue is ignored; two different bid addresses mean "unknown". Never guessed.
+ */
+export function extractSubmissionEmail(text: string): string | null {
+  const SUBMIT = /\b(?:submit(?:ted|tal|tals)?|submission|sent|send|emailed?|e-mailed?|deliver(?:ed)?|returned?)\b[^.\n]{0,90}\b(?:bids?|proposals?|quotes?|offers?|responses?|sealed)\b|\b(?:bids?|proposals?|quotes?|offers?|responses?)\b[^.\n]{0,60}\b(?:must|shall|should|may|are to|to)\b[^.\n]{0,40}\b(?:submitted|sent|emailed|e-mailed|delivered|returned)\b/i;
+  const QUESTION = /\b(?:questions?|inquir(?:y|ies)|clarifications?|contact|assistance|information|vendor registration|help)\b/i;
+  const found = new Set<string>();
+  for (const m of text.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g)) {
+    const at = m.index ?? 0;
+    const before = text.slice(Math.max(0, at - 160), at);
+    const after = text.slice(at + m[0].length, at + m[0].length + 60);
+    const context = `${before} ${m[0]} ${after}`;
+    let score = 0;
+    if (SUBMIT.test(context)) score += 2;
+    if (QUESTION.test(before.slice(-70)) && !SUBMIT.test(before.slice(-70))) score -= 2;
+    if (score >= 2) found.add(m[0].toLowerCase());
+  }
+  return found.size === 1 ? [...found][0]! : null;
+}

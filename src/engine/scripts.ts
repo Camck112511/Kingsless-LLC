@@ -5,11 +5,11 @@
  *
  * PROTECTED engine file.
  */
-import type { Analysis, Inputs, Opportunity, Settings } from "./types";
+import type { Analysis, Inputs, Opportunity, Settings, SubTerms } from "./types";
 import { daysBetween, isIsoDate, usd } from "./util";
 
 export interface Script {
-  id: "quote-request" | "procurement-inquiry" | "scope-of-work" | "draft-bid" | "call-script";
+  id: "quote-request" | "procurement-inquiry" | "scope-of-work" | "draft-bid" | "call-script" | "subcontract-offer";
   title: string;
   subject: string | null;
   body: string;
@@ -267,5 +267,62 @@ export function generateScripts(opp: Opportunity, analysis: Analysis, inputs: In
       ? `DRAFT: only the procurement inquiry is available. Subcontractor outreach stays locked until the solicitation confirms subcontracting is allowed and you can qualify as prime. This app never sends these messages for you.${days}`
       : `DRAFTS: review and edit before sending. This app never sends these messages for you.${days}`,
     scripts: hardGateOpen ? [inquiry] : [quoteRequest, inquiry, sow, bid, call],
+  };
+}
+
+function describeSubTerms(t: SubTerms | null): string {
+  if (!t) return "to be agreed";
+  switch (t.kind) {
+    case "pay-when-paid":
+      return `paid ${t.netDays ? `within ${t.netDays} days after` : "promptly after"} we are paid by the owner for the related work`;
+    case "deposit-balance":
+      return `${Math.round(t.depositRate * 100)}% at mobilization, the balance ${t.netDays ? `${t.netDays} days after` : "on"} completion and acceptance`;
+    case "net":
+      return `paid net ${t.netDays} days after each approved invoice`;
+    case "on-completion":
+      return `paid ${t.netDays ? `${t.netDays} days after` : "on"} completion and acceptance`;
+  }
+}
+
+/**
+ * The message that sells a won contract on: offers the work to a subcontractor at a proposed price. It never contains what
+ * the owner (agency) pays, and never the most the LLC could pay. Nothing is sent by the app.
+ */
+export function subcontractOfferScript(opp: Opportunity, inputs: Inputs, settings: Settings, offerUsd: number | null, today: string): Script {
+  const owner = opp.agency || "[project owner]";
+  const reqs = requirementLines(opp);
+  const dur = inputs.durationDays ?? opp.durationDays;
+  const replyBy = longDate(addDaysIso(today, 5));
+  return {
+    id: "subcontract-offer",
+    title: "Offer the contract to a subcontractor",
+    subject: `Subcontract opportunity: ${opp.title} (${place(opp)})`,
+    body: [
+      `Hi, this is ${settings.contact.contactName || "[name]"} with ${settings.contact.companyName || "[company]"}. We have been awarded a contract with ${owner} for ${scopeInline(opp)} in ${place(opp)}, and we are looking for a licensed, insured contractor to perform the work under a subcontract. I thought of you.`,
+      "",
+      `The work: ${scopeLine(opp)}`,
+      `Where: ${place(opp)}`,
+      `Timing: mobilization about ${inputs.startLeadDays} days after notice to proceed${dur ? `; about ${dur} days on site` : ""}.`,
+      "",
+      "What the subcontract requires of you:",
+      ...(reqs.length ? reqs.map((r) => `- ${r}`) : ["- Any license, insurance and bonding the solicitation requires (we will send the details)."]),
+      "- The quality, schedule and safety requirements of our contract, which flow down to you.",
+      "",
+      `Payment: ${describeSubTerms(inputs.subTerms)}.`,
+      offerUsd !== null
+        ? `Our proposed subcontract price: ${usd(offerUsd)}, covering all labor, materials, equipment, mobilization and insurance. If your price differs, tell me what it is and what it includes.`
+        : "Please send your price for the full scope, with what it includes and excludes.",
+      "",
+      `If you are interested, please reply by ${replyBy} with:`,
+      "1. Confirmation you want to do it",
+      "2. Your license number(s) and a certificate of insurance",
+      "3. Crew and equipment availability for the start window",
+      "4. Two references from similar work",
+      "",
+      "This is an invitation to talk, not an award. Nothing is agreed until we both sign a written subcontract.",
+      "",
+      signature(settings),
+    ].join("\n"),
+    internalNotes: "Never tell a subcontractor what the owner is paying, or the most you could pay them. Open at the proposed price and negotiate up only if needed.",
   };
 }

@@ -7,13 +7,15 @@ import type { SubResearchResult } from "@/server/ai/sub-research";
 import type { ScoutResult } from "@/server/sources/leads";
 import type { MarketStats, PastAward, SubAwardee } from "@/server/sources/usaspending";
 import type { DiscoveryResult } from "@/server/sources/types";
-import type { AppState } from "./store";
+import type { AppState, Patch } from "./types";
 
-export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number };
+export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string; status: number; body?: unknown };
 
-export async function postJson<T>(url: string, body: unknown): Promise<ApiResult<T>> {
+export const postJson = <T,>(url: string, body: unknown): Promise<ApiResult<T>> => sendJson<T>("POST", url, body);
+
+export async function sendJson<T>(method: "POST" | "PUT" | "GET", url: string, body?: unknown): Promise<ApiResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin" });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), credentials: "same-origin" });
     if (res.status === 401 && typeof window !== "undefined") {
       // full reload on purpose: drops any client state tied to the expired session
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
@@ -21,7 +23,7 @@ export async function postJson<T>(url: string, body: unknown): Promise<ApiResult
       return { ok: false, error: "Signed out.", status: 401 };
     }
     const json = (await res.json().catch(() => ({}))) as { error?: string } & Record<string, unknown>;
-    if (!res.ok) return { ok: false, error: json.error ?? `Request failed (${res.status}).`, status: res.status };
+    if (!res.ok) return { ok: false, error: json.error ?? `Request failed (${res.status}).`, status: res.status, body: json };
     return { ok: true, data: json as T };
   } catch {
     return { ok: false, error: "Network error. Check your connection and try again.", status: 0 };
@@ -168,6 +170,25 @@ export async function bidDownload(s: AppState, id: string, what: { format: "docx
     return { ok: false, error: "Network error. Check your connection and try again." };
   }
 }
+
+/* ----------------------------- cloud sync + autopilot ----------------------------- */
+
+export interface CloudSnapshot {
+  enabled: boolean;
+  clientRev?: number;
+  savedAt?: string;
+  state?: AppState | null;
+  outbox?: Patch[];
+}
+export const cloudGetApi = () => sendJson<CloudSnapshot>("GET", "/api/admin/state");
+export const cloudPutApi = (baseRev: number, state: AppState, acked: string[]) => sendJson<{ clientRev: number; outbox: Patch[] }>("PUT", "/api/admin/state", { baseRev, state, acked });
+
+export interface AutopilotRunResponse {
+  patches: Patch[];
+  processed: number;
+  mode: "cloud" | "browser";
+}
+export const autopilotRunApi = (opts: { itemId?: string; briefingOnly?: boolean; state?: AppState }) => postJson<AutopilotRunResponse>("/api/admin/autopilot/run", opts);
 
 export async function logout(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });

@@ -44,9 +44,34 @@ The site is set up to be served at **https://kingsless.com**. Connecting the dom
 6. **Submitting**: agency portals have no way for software to submit for you, so for most bids you upload the packet yourself and record it. If a solicitation says to email bids, the workspace can send it (needs Resend, above) after a final check **re-run on the server**, with a typed `SEND`. The console only ever emails the final bid packet; it never sends quote requests, inquiries or anything to a subcontractor.
 7. After a win, the workspace finds subcontractors (AI web research plus federal subaward records), files them in your directory as **unverified**, and gives you the term sheet to send.
 
+### Autopilot: let the engine go after the bids you pick
+
+Select bids on **My bids** and press **Let the engine go after them**. You set the limits once (price floor and ceiling, whether it may bid on your sub-price estimate), tick that you read each official solicitation, and type `AUTHORIZE`. Then, for each bid, the engine:
+
+1. **Reads the official solicitation** (the page and linked PDFs) and fills in what it can prove; every rule-reader fact keeps its source sentence and every AI fact must quote the text verbatim.
+2. **Chooses the price.** It tries every price from your walk-away line up to the expected market price, re-runs every rule at each one, and keeps the price with the best *expected profit* (win chance × profit). The win chance is the engine's transparent heuristic, shown with the table of prices it weighed. With no price in the listing it uses the median of at least 5 federal comparables, and says so.
+3. **Checks it can be staffed.** To bid on an estimate it needs at least 2 subcontractors on file who offer the work in the area (and list the license if one is required); with AI on, it researches some when too few are on file.
+4. **Submits.** If every rule is proven (even with the sub costing 25% more), the price is inside your limits, nothing in the documents is blank, and the listing clearly says where to email bids (or you gave an address), it emails the bid with the PDF packet and copies you. Portal-only bids it fully prepares and emails *you* to upload. Never more than 5 a day.
+5. **Watches for the result.** Federal bids: SAM.gov award notices (a name match is recorded as a win or loss). Everything else: if the agency's page starts naming you near an award, it asks you to confirm.
+6. **After a win** it builds the **briefing**: what you now owe, what to offer a subcontractor (open at your estimate; never pay more than your maximum; never reveal the award), and **every candidate ranked best first** (your directory, AI web research, federal subaward records), plus a ready-to-send offer message. It emails you all of it.
+
+It stops and tells you when a rule fails, when something only you can supply is missing (a blank company detail, a missing estimate), or the deadline passes. It never emails a subcontractor, never invents a fact, and never goes outside the limits you set. You can pause or stop any bid, or everything, at any time; **a bid that has been emailed cannot be recalled.**
+
+### Background mode (one-time setup)
+
+Autopilot works while the console is open (it also runs when you open it, and when you press **Run autopilot now**). To let it keep working while you are away, and to email you when something happens, the site needs three things on the server:
+
+| What | Why |
+| --- | --- |
+| A **private Vercel Blob store** connected to the project (adds `BLOB_READ_WRITE_TOKEN`) | A cloud copy of your data. The browser stays the editor; it pushes its state and applies the autopilot's changes. If two browsers disagree it asks you which copy to keep instead of overwriting. |
+| `CRON_SECRET` (any random string, 16+ characters) | Lets Vercel's scheduler run the pass. Without it the scheduled route refuses every request. |
+| `RESEND_API_KEY` + `BID_EMAIL_FROM` | Sending bids and emailing you. |
+
+`vercel.json` schedules the pass **once a day (14:00 UTC)**, the most a Hobby plan allows. On a Pro plan change the schedule to hourly (`0 * * * *`) for faster reaction. Scheduled runs only happen on the production deployment. The status shows under **Settings → Background mode**.
+
 ### What the console will not do
 
-It will not send a bid unless every rule is proven, a subcontractor has quoted and confirmed, the listing is confirmed against the official solicitation, the price clears your walk-away line, no blank remains in the documents, you confirmed you read them, and the due date has not passed. You can still submit yourself and record it. It never invents a due date, price, license, contact detail or link: anything it does not know is a highlighted blank or "unverified".
+Sending from the bid workspace needs every rule proven, a subcontractor who quoted and confirmed, the listing confirmed against the official solicitation, a price above your walk-away line, no blank in the documents, you confirming you read them, and the due date not passed. **Autopilot** applies its own, equally strict set (above) under the authorization you gave. You can always submit yourself and record it. It never invents a due date, price, license, contact detail or link: anything it does not know is a highlighted blank or "unverified".
 
 ### Not yet tested against the live services
 

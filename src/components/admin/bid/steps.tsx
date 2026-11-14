@@ -5,12 +5,14 @@ import type { PreflightCheck, Settings } from "@/engine/types";
 import { fmtDate, fmtPct, fmtUsd, safeUrl, todayIso } from "@/components/format";
 import { Badge, Button, Field, Input, Notice, Select, Textarea, cn } from "@/components/ui";
 import { bidDownload, bidSendApi, type BidPlan } from "@/lib/api";
+import { runAutopilotNow } from "@/lib/cloud";
 import { actions, bidOf, type AppState, type PipelineItem } from "@/lib/store";
 import type { Capabilities } from "@/server/views";
 import { NumberField } from "../fields";
 import { GatesPanel } from "../opportunity/gates";
 import { ShortlistPanel } from "../opportunity/shortlist";
 import { MarketPanel } from "../market";
+import { WinBriefingView } from "../autopilot/briefing";
 import { DocPreview } from "./doc-preview";
 import { SubResearchPanel } from "./sub-research";
 
@@ -469,7 +471,7 @@ export function ResultStep(p: StepProps) {
         <Field label="Awarded amount"><NumberField prefix="$" value={f.awardUsd} onChange={(v) => setF({ ...f, awardUsd: v })} /></Field>
         <Field label="Note"><Input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Who won, at what price…" /></Field>
       </div>
-      <Button variant="primary" disabled={!f.decidedOn} onClick={() => { actions.patchBid(oid, (b) => ({ ...b, outcome: { ...f, awardUsd: f.result === "won" ? f.awardUsd : f.awardUsd } })); actions.updateItem(oid, { status: f.result === "won" ? "won" : f.result === "lost" ? "lost" : "passed" }); }}>Record the result</Button>
+      <Button variant="primary" disabled={!f.decidedOn} onClick={() => { actions.patchBid(oid, (b) => ({ ...b, outcome: { ...f, awardUsd: f.result === "won" ? f.awardUsd : f.awardUsd } })); actions.updateItem(oid, { status: f.result === "won" ? "won" : f.result === "lost" ? "lost" : "passed" }); if (f.result === "won") void runAutopilotNow({ itemId: oid, briefingOnly: true }); }}>Record the result</Button>
     </div>
   );
 }
@@ -483,8 +485,18 @@ export function WinStep(p: StepProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const best = plan.analysis.candidates[0];
+  const briefing = bidOf(item).briefing ?? null;
+  const [building, setBuilding] = useState(false);
   return (
     <div className="space-y-5 text-sm">
+      {briefing ? (
+        <WinBriefingView briefing={briefing} />
+      ) : (
+        <Notice tone="info">
+          The briefing (what you won, what to offer, who to sell it to) is built when a win is recorded.{" "}
+          <button type="button" className="font-medium underline" disabled={building} onClick={async () => { setBuilding(true); await runAutopilotNow({ itemId: oid, briefingOnly: true }); setBuilding(false); }}>{building ? "Building…" : "Build it now"}</button>
+        </Notice>
+      )}
       <ol className="list-decimal space-y-2 pl-5">
         <li><strong>Get the award in writing</strong> and note the notice-to-proceed date. <span className="text-muted">Do not commit your subcontractor to a start date until you have it.</span></li>
         <li><strong>Choose the subcontractor.</strong> {best ? <>Best match so far: <strong>{best.name}</strong> ({best.label.replace("-", " ")}).</> : "Research candidates below."} <span className="text-muted">Call at least two and compare in writing.</span></li>

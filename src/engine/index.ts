@@ -7,7 +7,7 @@ export { DEFAULT_INPUTS, DEFAULT_PROFILE, DEFAULT_SERVICE_AREA, DEFAULT_BID_PREP
 export { analyze, analyzeAll, type AnalyzeItem, type World } from "./analyze";
 export { calcPricing, marginFromMarkup, markupFromMargin, priceForMargin } from "./pricing";
 export { simulateCash, customerPayments } from "./cashflow";
-export { extractTerms, applyPatch, parseDate, type TermsPatch } from "./extract";
+export { extractTerms, extractSubmissionEmail, applyPatch, parseDate, type TermsPatch } from "./extract";
 export { mergeAiFacts, quoteAppearsIn, AI_FIELDS, type AiFact, type AiMergeReport } from "./ai-merge";
 export { generateScripts, longDate, type Script, type ScriptSet } from "./scripts";
 export { newInputs, newOpportunity, newTerms } from "./factory";
@@ -16,3 +16,8 @@ export { checkLocation, describeArea, normState, placeMatches, US_STATES } from 
 export { hasWord, recommend, scoreFit } from "./fit";
 export { buildBidPackage, findPlaceholders, ph, type BidContext } from "./bid-docs";
 export { buildWorkflow, canSend, isEmail, preflight, type Channel, type FlowInput } from "./bid";
+export { recommendPrice, type PriceBounds, type PriceResult } from "./price-strategy";
+export { bidEmailFor, decide, sameCompany, staffingCheck, type AutoAction, type AutoCheck, type AutoDecision, type AutoInput, type StaffingResult } from "./autopilot";
+export { rankSubs, type FederalLead, type RankInput, type WebLead } from "./sub-rank";
+export { buildWinBriefing, type BriefingInput } from "./briefing";
+export { subcontractOfferScript } from "./scripts";
