@@ -44,30 +44,35 @@ The site is set up to be served at **https://kingsless.com**. Connecting the dom
 6. **Submitting**: agency portals have no way for software to submit for you, so for most bids you upload the packet yourself and record it. If a solicitation says to email bids, the workspace can send it (needs Resend, above) after a final check **re-run on the server**, with a typed `SEND`. The console only ever emails the final bid packet; it never sends quote requests, inquiries or anything to a subcontractor.
 7. After a win, the workspace finds subcontractors (AI web research plus federal subaward records), files them in your directory as **unverified**, and gives you the term sheet to send.
 
-### Autopilot: let the engine go after the bids you pick
+### Autopilot: let the engine go after the bids you pick (no keys needed)
+
+**Start and Stop.** Autopilot is **stopped** until you press **Start** (top right, always visible; also under Settings). Stop halts everything at once. Authorizing a bid also starts it. While started, any open console tab checks your authorized bids every 10 minutes; turn on *Keep this screen awake* in Settings and leave the console open on a plugged-in laptop, tablet or old phone and it keeps working while you are away. Run it from one device at a time.
 
 Select bids on **My bids** and press **Let the engine go after them**. You set the limits once (price floor and ceiling, whether it may bid on your sub-price estimate), tick that you read each official solicitation, and type `AUTHORIZE`. Then, for each bid, the engine:
 
 1. **Reads the official solicitation** (the page and linked PDFs) and fills in what it can prove; every rule-reader fact keeps its source sentence and every AI fact must quote the text verbatim.
 2. **Chooses the price.** It tries every price from your walk-away line up to the expected market price, re-runs every rule at each one, and keeps the price with the best *expected profit* (win chance × profit). The win chance is the engine's transparent heuristic, shown with the table of prices it weighed. With no price in the listing it uses the median of at least 5 federal comparables, and says so.
-3. **Checks it can be staffed.** To bid on an estimate it needs at least 2 subcontractors on file who offer the work in the area (and list the license if one is required); with AI on, it researches some when too few are on file.
-4. **Submits.** If every rule is proven (even with the sub costing 25% more), the price is inside your limits, nothing in the documents is blank, and the listing clearly says where to email bids (or you gave an address), it emails the bid with the PDF packet and copies you. Portal-only bids it fully prepares and emails *you* to upload. Never more than 5 a day.
-5. **Watches for the result.** Federal bids: SAM.gov award notices (a name match is recorded as a win or loss). Everything else: if the agency's page starts naming you near an award, it asks you to confirm.
-6. **After a win** it builds the **briefing**: what you now owe, what to offer a subcontractor (open at your estimate; never pay more than your maximum; never reveal the award), and **every candidate ranked best first** (your directory, AI web research, federal subaward records), plus a ready-to-send offer message. It emails you all of it.
+3. **Checks it can be staffed.** To bid on an estimate it needs at least 2 subcontractors on file who offer the work in the area (and list the license if one is required). When too few are on file it finds companies that primes have actually hired for similar federal work in that state (USAspending.gov, **free, no key**), and with an Anthropic key it also researches the open web. Everything it adds is marked unverified.
+4. **Gets the bid out.** If every rule is proven (even with the sub costing 25% more), the price is inside your limits and nothing in the documents is blank:
+   - **With email set up** (optional, see below) and an address the listing clearly states, it emails the bid itself with the PDF packet and copies you. Never more than 5 a day.
+   - **Without email set up (the default)** it puts the finished bid in your **Needs you → Ready to send** queue: one tap for an **email draft with the PDF already attached** (a `.eml` file that opens ready to send in Outlook, Apple Mail and Thunderbird), or **Open my email app** (then attach the downloaded PDF, for Gmail and phones), or open the agency's page for a portal. Then tap **I sent it** and it carries on from there.
+5. **Watches for the result.** Federal bids: SAM.gov award notices (needs the free SAM.gov key; a name match is recorded as a win or loss). Everything else: if the agency's page starts naming you near an award, it asks you to confirm.
+6. **After a win** it builds the **briefing**: what you now owe, what to offer a subcontractor (open at your estimate; never pay more than your maximum; never reveal the award), and **every candidate ranked best first** (your directory, federal subaward records, and AI web research if on), plus a ready-to-send offer message.
 
-It stops and tells you when a rule fails, when something only you can supply is missing (a blank company detail, a missing estimate), or the deadline passes. It never emails a subcontractor, never invents a fact, and never goes outside the limits you set. You can pause or stop any bid, or everything, at any time; **a bid that has been emailed cannot be recalled.**
+**Alerts, free and with no account** (Settings → Alerts): a notification from your browser, and an optional push to the free **ntfy** phone app (subscribe to the random topic shown; the push says only what happened, never an amount or a contact). They fire while a console tab is open.
 
-### Background mode (one-time setup)
+It stops and tells you when a rule fails, when something only you can supply is missing (a blank company detail, a missing estimate), or the deadline passes. It never emails a subcontractor, never invents a fact, and never goes outside the limits you set. You can stop any one bid, or everything, at any time; **a bid that has been emailed cannot be recalled.**
 
-Autopilot works while the console is open (it also runs when you open it, and when you press **Run autopilot now**). To let it keep working while you are away, and to email you when something happens, the site needs three things on the server:
+### Optional extras (all skippable)
 
-| What | Why |
+The **only** things you must set in Vercel are `ADMIN_PASSWORD` and `AUTH_SECRET`. Everything below is optional and adds capability; autopilot, pricing, documents, the ready-to-send queue, alerts and federal research work without any of it.
+
+| Add this | You get |
 | --- | --- |
-| A **private Vercel Blob store** connected to the project (adds `BLOB_READ_WRITE_TOKEN`) | A cloud copy of your data. The browser stays the editor; it pushes its state and applies the autopilot's changes. If two browsers disagree it asks you which copy to keep instead of overwriting. |
-| `CRON_SECRET` (any random string, 16+ characters) | Lets Vercel's scheduler run the pass. Without it the scheduled route refuses every request. |
-| `RESEND_API_KEY` + `BID_EMAIL_FROM` | Sending bids and emailing you. |
-
-`vercel.json` schedules the pass **once a day (14:00 UTC)**, the most a Hobby plan allows. On a Pro plan change the schedule to hourly (`0 * * * *`) for faster reaction. Scheduled runs only happen on the production deployment. The status shows under **Settings → Background mode**.
+| `RESEND_API_KEY` + `BID_EMAIL_FROM` | The engine emails bids itself (instead of the Ready to send queue) and emails you. |
+| `ANTHROPIC_API_KEY` | AI web search for bids and subcontractors, the AI second opinion, the AI clause reader. |
+| `SAM_GOV_API_KEY` (free) | SAM.gov bid search and federal award detection. |
+| A private **Vercel Blob** store + `CRON_SECRET` | *Cloud mode*: autopilot keeps working while every tab is closed. Your data is also kept in a private cloud copy (the browser stays the editor; if two browsers disagree it asks you which to keep). `vercel.json` schedules a daily pass, the most a Hobby plan allows. Settings → *Optional: keep working while every tab is closed* shows the status. |
 
 ### What the console will not do
 

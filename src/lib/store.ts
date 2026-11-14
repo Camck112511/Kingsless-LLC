@@ -32,7 +32,8 @@ const KEY = "kingsless.admin.v1";
 const nowIso = () => new Date().toISOString();
 
 export function emptyState(): AppState {
-  return { version: 1, settings: structuredClone(DEFAULT_SETTINGS), items: [], subcontractors: [], quotes: [], events: [], autopilotPaused: false };
+  // Autopilot starts STOPPED. Nothing runs on its own until the owner presses Start (or authorizes a bid).
+  return { version: 1, settings: structuredClone(DEFAULT_SETTINGS), items: [], subcontractors: [], quotes: [], events: [], autopilotPaused: true };
 }
 
 /** Fill any missing settings fields (e.g. from an older backup) from the defaults. */
@@ -54,7 +55,7 @@ function normalize(raw: Partial<AppState> | null | undefined): AppState {
     subcontractors: Array.isArray(raw.subcontractors) ? raw.subcontractors : [],
     quotes: Array.isArray(raw.quotes) ? raw.quotes : [],
     events: Array.isArray(raw.events) ? raw.events : [],
-    autopilotPaused: raw.autopilotPaused === true,
+    autopilotPaused: raw.autopilotPaused !== false,
   };
 }
 
@@ -129,6 +130,8 @@ const cur = (): AppState => snapshot() ?? emptyState();
 export const getState = cur;
 
 const localId = (p: string): string => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+const auth0 = (a: AutoAuthorization): AutoAuthorization => a;
 
 const blankAutoProgress = () => ({ phase: "authorized" as const, lastRunAt: null, summary: "Authorized. Waiting for the first pass.", needs: [] as string[], notifiedKey: "", pageHash: "", subResearchAt: null, compsAt: null, pricing: null });
 
@@ -206,7 +209,11 @@ export const actions = {
       );
       n += 1;
     }
-    if (n > 0) commit(s);
+    if (n > 0) {
+      // Authorizing a bid is the owner saying "go": it also starts autopilot if it was stopped.
+      if (s.autopilotPaused) s = withEvent({ ...s, autopilotPaused: false }, null, "info", "Autopilot started", "You authorized a bid, which starts autopilot. Press Stop at any time.");
+      commit(s);
+    }
     return n;
   },
   setAutoPaused(id: string, paused: boolean) {
@@ -226,8 +233,34 @@ export const actions = {
     const next: PipelineItem = { ...item, updatedAt: nowIso(), bid: { ...bidOf(item), auto: { auth: { ...auto.auth, paused: true }, progress: { ...auto.progress, phase: "stopped", summary: "Stopped by you.", needs: [] } } } };
     commit(withEvent({ ...s, items: s.items.map((i) => (i.opportunity.id === id ? next : i)) }, id, "stopped", "You stopped autopilot", item.opportunity.title));
   },
-  setGlobalPause(paused: boolean) {
-    commit(withEvent({ ...cur(), autopilotPaused: paused }, null, "info", paused ? "You paused ALL autopilot activity" : "You resumed autopilot", ""));
+  /** The master switch. Off = nothing runs, for any bid. A bid already emailed cannot be recalled. */
+  setAutopilotOn(on: boolean) {
+    const s = cur();
+    if (s.autopilotPaused === !on) return;
+    commit(withEvent({ ...s, autopilotPaused: !on }, null, "info", on ? "Autopilot started" : "Autopilot stopped", on ? "It will check your authorized bids while this console is open." : "Nothing will run until you press Start."));
+  },
+  /** Bring a stopped bid back, keeping the limits you set. */
+  restartAuto(id: string) {
+    const s = cur();
+    const item = s.items.find((i) => i.opportunity.id === id);
+    const auto = item?.bid?.auto;
+    if (!item || !auto) return;
+    const next: PipelineItem = { ...item, updatedAt: nowIso(), bid: { ...bidOf(item), auto: { auth: { ...auth0(auto.auth), paused: false }, progress: { ...auto.progress, phase: "authorized", summary: "Restarted by you.", needs: [], notifiedKey: "" } } } };
+    commit(withEvent({ ...s, autopilotPaused: false, items: s.items.map((i) => (i.opportunity.id === id ? next : i)) }, id, "authorized", "You restarted autopilot", item.opportunity.title));
+  },
+  /** "I sent it": you sent the prepared bid yourself (own email, portal, mail). Autopilot then watches for the result. */
+  recordSent(id: string, method: "own-email" | "portal" | "mail-or-hand", confirmation: string) {
+    const s = cur();
+    const item = s.items.find((i) => i.opportunity.id === id);
+    if (!item) return;
+    const b = bidOf(item);
+    const next: PipelineItem = {
+      ...item,
+      status: "bid-submitted",
+      updatedAt: nowIso(),
+      bid: { ...b, submission: { submittedOn: nowIso().slice(0, 10), method, confirmation: confirmation.trim(), priceUsd: item.inputs.plannedBidUsd, note: "Sent by you from the autopilot queue." }, auto: b.auto ? { ...b.auto, progress: { ...b.auto.progress, phase: "submitted", summary: "You sent it. Watching for the result.", needs: [] } } : b.auto },
+    };
+    commit(withEvent({ ...s, items: s.items.map((i) => (i.opportunity.id === id ? next : i)) }, id, "submitted", `You sent the bid for ${item.opportunity.title}`, `By ${method.replace(/-/g, " ")}${confirmation.trim() ? `, reference ${confirmation.trim()}` : ""}. Autopilot will watch for the result.`));
   },
   setSettings(settings: Settings) {
     commit({ ...cur(), settings });

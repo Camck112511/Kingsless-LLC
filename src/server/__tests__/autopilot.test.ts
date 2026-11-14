@@ -165,6 +165,42 @@ describe("autopilot pass", () => {
     expect(r2.state.items[0]!.bid!.auto!.progress.needs.join(" ")).toMatch(/at least 2 subcontractors/);
   });
 
+  it("finds subcontractor candidates in federal subaward records when AI is off", async () => {
+    const f = fake({
+      aiEnabled: false,
+      subawards: async () => [
+        { name: "Gulf Coast Cleaning LLC", count: 5, totalUsd: 220_000, latest: "2026-02-01", states: ["TX"], agencies: [], examples: [{ description: "Janitorial services", amountUsd: 40_000, date: "2026-01-05", prime: "Prime A" }], uei: "U1" },
+        { name: "Lone Star Facilities", count: 3, totalUsd: 90_000, latest: "2025-11-01", states: ["TX", "OK"], agencies: [], examples: [], uei: "U2" },
+        { name: "Ohio Only Cleaning", count: 9, totalUsd: 500_000, latest: "2026-03-01", states: ["OH"], agencies: [], examples: [], uei: "U3" },
+      ],
+    });
+    const r = await runAutopilot(state([item()], { subcontractors: [] }), f.deps);
+    const names = r.state.subcontractors.map((s) => s.name);
+    expect(names).toEqual(["Gulf Coast Cleaning LLC", "Lone Star Facilities"]); // only companies that have worked in the bid's state
+    const first = r.state.subcontractors[0]!;
+    expect(first.willingToSubcontract).toBe("unknown");
+    expect(first.capacityConfirmed).toBe(false);
+    expect(first.licenses).toEqual([]);
+    expect(first.notes).toMatch(/USAspending/);
+    expect(f.sent).toHaveLength(1); // two plausible local companies now exist
+    // a license-required job is NOT cleared by these: none lists a license
+    const g = fake({ subawards: async () => [{ name: "Gulf Coast Cleaning LLC", count: 5, totalUsd: 220_000, latest: "2026-02-01", states: ["TX"], agencies: [], examples: [], uei: "U1" }, { name: "Lone Star Facilities", count: 3, totalUsd: 90_000, latest: "2025-11-01", states: ["TX"], agencies: [], examples: [], uei: "U2" }] });
+    const licensed = item({ opp: { terms: { ...cleanOpp().terms, licensingRequired: "yes" } } });
+    const r2 = await runAutopilot(state([licensed], { subcontractors: [] }), g.deps);
+    expect(g.sent).toHaveLength(0);
+    expect(r2.state.items[0]!.bid!.auto!.progress.phase).toBe("needs-you");
+  });
+
+  it("remembers where a bid it could not email should go, so the owner can send it in one tap", async () => {
+    const f = fake({ emailEnabled: false });
+    const r = await runAutopilot(state([item()]), f.deps);
+    expect(f.sent).toHaveLength(0);
+    const p = r.state.items[0]!.bid!.auto!.progress;
+    expect(p.phase).toBe("ready-to-upload");
+    expect(p.recipient).toBe("bids@county.gov");
+    expect(r.state.items[0]!.inputs.plannedBidUsd).not.toBeNull();
+  });
+
   it("uses federal comparables as the expected price only with enough of them", async () => {
     const noMarket = (): PipelineItem => ({ ...item(), inputs: goodInputs({ marketPriceUsd: null, plannedBidUsd: null }) });
     const few = fake({ comps: async () => ({ awards: [], stats: { count: 2, medianUsd: 4000, lowUsd: 3000, highUsd: 5000 } }) });

@@ -12,10 +12,12 @@ const same = (a: string, b: string): boolean => a.length === b.length && timingS
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
+  const noStore = { "Cache-Control": "no-store" };
+  // Background mode is optional. Without a cloud store and a secret there is nothing to run, and nothing here can be triggered.
+  if (!secret || !getStore()) return Response.json({ skipped: "Background mode is not set up." }, { headers: noStore });
   const header = request.headers.get("authorization") ?? "";
-  if (!secret || secret.length < 16 || !same(header, `Bearer ${secret}`)) return new Response("Unauthorized", { status: 401, headers: { "Cache-Control": "no-store" } });
-  const store = getStore();
-  if (!store) return Response.json({ skipped: "Background mode is not set up." }, { headers: { "Cache-Control": "no-store" } });
+  if (secret.length < 16 || !same(header, `Bearer ${secret}`)) return new Response("Unauthorized", { status: 401, headers: noStore });
+  const store = getStore()!;
   const result = await runStored(store, liveDeps());
   return Response.json(result.ok ? { ok: true, processed: result.processed, changes: result.patches.length } : { ok: false, error: result.error }, { status: result.ok ? 200 : result.status === 409 ? 200 : 500, headers: { "Cache-Control": "no-store" } });
 }

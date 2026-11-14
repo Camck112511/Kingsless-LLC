@@ -8,7 +8,7 @@ import { emptyBid } from "@/engine/config";
 import type { BidRecord } from "@/engine/types";
 import { cleanOpp, goodInputs, quote, settings, sub, TODAY, world } from "@/engine/__tests__/helpers";
 import { bodyToText } from "../net/html";
-import { buildDocxFile, buildPacketPdf, buildZip, safeName } from "../docs/package";
+import { buildDocxFile, buildEml, buildPacketPdf, buildZip, safeName } from "../docs/package";
 
 const contact = { companyName: "Kingsless LLC", contactName: "Cullen McKinney", email: "cullen@kingsless.org", phone: "(512) 217-7788", title: "Owner", address: "1 Main St, Austin, TX 78701", capability: "We deliver facility services through vetted subcontractors." };
 
@@ -70,6 +70,30 @@ describe("bid files", () => {
     expect(names).toContain("Kingsless-D-1/INTERNAL - DO NOT SEND/Bid-Summary.docx");
     expect(names.filter((n) => n.includes("Bid-Summary")).every((n) => n.includes("INTERNAL"))).toBe(true);
     expect(names).toContain("Kingsless-D-1/READ-ME.txt");
+  });
+
+  it("builds an email draft with the PDF attached that desktop mail apps open ready to send", async () => {
+    const packet = await buildPacketPdf(pkg(), "Kingsless D-1");
+    const eml = buildEml({ to: "bids@county.gov", subject: "Bid D-1: Janitorial", text: "Please find attached our bid.\n\nThank you", attachment: { filename: packet.filename, data: packet.data } });
+    dump("draft.eml", eml.data);
+    expect(eml.mime).toBe("message/rfc822");
+    expect(eml.filename).toMatch(/\.eml$/);
+    const text = Buffer.from(eml.data).toString("utf8");
+    expect(text).toMatch(/^X-Unsent: 1\r\nTo: bids@county\.gov\r\n/);
+    expect(text).toContain("Content-Type: multipart/mixed");
+    expect(text).toContain(`filename="${packet.filename}"`);
+    // the attachment decodes back to the same PDF
+    const b64 = text.split('Content-Disposition: attachment; filename="')[1]!.split("\r\n\r\n")[1]!.split("\r\n--")[0]!.replace(/\r\n/g, "");
+    expect(Buffer.from(b64, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+    // and a body that decodes to what we wrote
+    const body = text.split('charset="utf-8"\r\nContent-Transfer-Encoding: base64\r\n\r\n')[1]!.split("\r\n--")[0]!.replace(/\r\n/g, "");
+    expect(Buffer.from(body, "base64").toString("utf8")).toContain("Please find attached our bid.");
+  });
+
+  it("cannot be used to inject extra email headers", () => {
+    const eml = buildEml({ to: "a@b.gov\r\nBcc: evil@x.com", subject: "Hi\r\nBcc: evil@x.com", text: "x", attachment: { filename: 'a"\r\nX-Evil: 1.pdf', data: new Uint8Array([1]) } });
+    const text = Buffer.from(eml.data).toString("utf8");
+    expect(text.split("\r\n").some((l) => /^Bcc:/i.test(l) || /^X-Evil:/i.test(l))).toBe(false);
   });
 
   it("makes safe file names", () => {

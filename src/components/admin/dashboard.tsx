@@ -9,6 +9,7 @@ import { runAutopilotNow } from "@/lib/cloud";
 import { useAnalyses } from "@/lib/use-analyses";
 import { US_STATES } from "@/lib/us-states";
 import { ActivityFeed, PhaseBadge, RunControls } from "./autopilot/panel";
+import { ActionQueue } from "./autopilot/queue";
 import { AuthorizeDialog } from "./autopilot/authorize-dialog";
 import { LocationPicker } from "./location-picker";
 import { FitMeter, isRecommended, RecommendationBadge } from "./recommendation";
@@ -121,13 +122,15 @@ export function Dashboard() {
         </section>
       )}
 
+      <ActionQueue items={state.items} />
+
       {(autoItems.length > 0 || state.events.length > 0) && (
         <Card className="mb-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted">Autopilot</p>
               <p className="mt-0.5 text-sm">
-                {state.autopilotPaused ? <strong className="text-fail">All autopilot activity is paused.</strong> : <>Working on <strong>{autoCount(["authorized"])}</strong> · needs you <strong>{autoCount(["needs-you"])}</strong> · ready to upload <strong>{autoCount(["ready-to-upload"])}</strong> · submitted <strong>{autoCount(["submitted", "watching"])}</strong> · won <strong>{autoCount(["won"])}</strong></>}
+                {state.autopilotPaused ? <strong className="text-fail">Autopilot is stopped. Nothing is running.</strong> : <>Running · working on <strong>{autoCount(["authorized"])}</strong> · needs you <strong>{autoCount(["needs-you"])}</strong> · ready to upload <strong>{autoCount(["ready-to-upload"])}</strong> · submitted <strong>{autoCount(["submitted", "watching"])}</strong> · won <strong>{autoCount(["won"])}</strong></>}
               </p>
             </div>
             <RunControls />

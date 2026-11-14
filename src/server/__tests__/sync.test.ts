@@ -86,16 +86,24 @@ describe("cloud sync routes", () => {
     expect((await PUT(req("PUT", "/api/admin/state", { baseRev: 0, state: { version: 2 }, acked: [] }, h))).status).toBe(400);
   });
 
-  it("the scheduled pass refuses anyone without the cron secret", async () => {
+  it("the scheduled pass does nothing when background mode was never set up", async () => {
     const { GET } = await import("@/app/api/cron/autopilot/route");
-    expect((await GET(req("GET", "/api/cron/autopilot"))).status).toBe(401);
+    const noSecret = await GET(req("GET", "/api/cron/autopilot"));
+    expect(noSecret.status).toBe(200);
+    expect(await noSecret.json()).toEqual({ skipped: "Background mode is not set up." });
+    vi.stubEnv("CRON_SECRET", "a-sufficiently-long-cron-secret");
+    vi.stubEnv("STATE_STORE", "");
+    expect((await (await GET(req("GET", "/api/cron/autopilot", undefined, { authorization: "Bearer wrong" }))).json()).skipped).toBeTruthy();
+  });
+
+  it("the scheduled pass refuses anyone without the cron secret once it is set up", async () => {
+    const { GET } = await import("@/app/api/cron/autopilot/route");
     vi.stubEnv("CRON_SECRET", "a-sufficiently-long-cron-secret");
     expect((await GET(req("GET", "/api/cron/autopilot"))).status).toBe(401);
     expect((await GET(req("GET", "/api/cron/autopilot", undefined, { authorization: "Bearer wrong-wrong-wrong-wrong" }))).status).toBe(401);
+    expect((await GET(req("GET", "/api/cron/autopilot", undefined, { authorization: "Bearer " }))).status).toBe(401);
     const ok = await GET(req("GET", "/api/cron/autopilot", undefined, { authorization: "Bearer a-sufficiently-long-cron-secret" }));
     expect(ok.status).toBe(200);
-    vi.stubEnv("CRON_SECRET", "");
-    expect((await GET(req("GET", "/api/cron/autopilot", undefined, { authorization: "Bearer " }))).status).toBe(401);
   });
 
   it("the run endpoint needs the admin, and needs state when there is no cloud store", async () => {

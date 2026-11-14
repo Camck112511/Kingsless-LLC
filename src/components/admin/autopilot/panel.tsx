@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Analysis, AutoPhase, AutoEvent } from "@/engine/types";
 import { fmtDate, fmtPct, fmtUsd } from "@/components/format";
 import { Badge, Button, Card, CardTitle, Notice } from "@/components/ui";
-import { runAutopilotNow, useCloud } from "@/lib/cloud";
+import { runAutopilotNow, startAutopilot, stopAutopilot, useCloud } from "@/lib/cloud";
 import { actions, bidOf, useAppState, type PipelineItem } from "@/lib/store";
 import { AuthorizeDialog } from "./authorize-dialog";
 
@@ -47,28 +47,30 @@ export function ActivityFeed({ events, limit = 12, empty = "Nothing yet." }: { e
   );
 }
 
-/** Run now + the global pause, shown wherever autopilot is controlled. */
+/** The master switch: Start / Stop for all of autopilot, plus a button to check right now. */
 export function RunControls({ itemId }: { itemId?: string }) {
   const cloud = useCloud();
   const state = useAppState();
   const [msg, setMsg] = useState<string | null>(null);
   if (!state) return null;
+  const on = !state.autopilotPaused;
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {on ? (
+        <Button variant="danger" onClick={() => { if (window.confirm("Stop all autopilot activity? Nothing will run until you press Start. A bid that was already emailed cannot be recalled.")) stopAutopilot(); }}>Stop autopilot</Button>
+      ) : (
+        <Button variant="primary" onClick={() => startAutopilot()}>Start autopilot</Button>
+      )}
       <Button
-        variant="primary"
-        disabled={cloud.running}
+        disabled={cloud.running || !on}
         onClick={async () => {
           setMsg(null);
           setMsg(await runAutopilotNow({ itemId }));
         }}
       >
-        {cloud.running ? "Working…" : itemId ? "Run autopilot on this bid now" : "Run autopilot now"}
+        {cloud.running ? "Working…" : itemId ? "Check this bid now" : "Check now"}
       </Button>
-      {!itemId && (
-        <Button onClick={() => actions.setGlobalPause(!state.autopilotPaused)}>{state.autopilotPaused ? "Resume all autopilot" : "Pause all autopilot"}</Button>
-      )}
-      {(msg ?? (cloud.lastRunAt && !itemId ? `Last pass ${fmtDate(cloud.lastRunAt)}: ${cloud.lastRunMessage || "done"}` : null)) && <span className="text-xs text-muted">{msg ?? `Last pass ${fmtDate(cloud.lastRunAt)}`}</span>}
+      <span className="text-xs text-muted">{msg ?? (on ? "Running while this page is open." : "Stopped: nothing runs.")}{!msg && cloud.lastRunAt ? ` Last check ${fmtDate(cloud.lastRunAt)}.` : ""}</span>
     </div>
   );
 }
@@ -99,9 +101,9 @@ export function AutopilotPanel({ item, analysis }: { item: PipelineItem; analysi
   const price = p.pricing;
   return (
     <Card>
-      <CardTitle aside={<PhaseBadge phase={auto.auth.paused && p.phase !== "stopped" ? "needs-you" : p.phase} />}>Autopilot</CardTitle>
+      <CardTitle aside={<PhaseBadge phase={p.phase} />}>Autopilot</CardTitle>
       <div className="space-y-3 text-sm">
-        <p>{auto.auth.paused && p.phase !== "stopped" ? "Paused by you. Nothing will be sent until you resume." : p.summary || "Waiting for the first pass."}</p>
+        <p>{state.autopilotPaused && !["submitted", "watching", "won", "lost", "stopped", "expired"].includes(p.phase) ? "Autopilot is stopped, so nothing will happen on this bid until you press Start." : p.summary || "Waiting for the first pass."}</p>
         {p.needs.length > 0 && (
           <Notice tone="unknown">
             <strong>Needs you:</strong>
@@ -126,14 +128,12 @@ export function AutopilotPanel({ item, analysis }: { item: PipelineItem; analysi
         <p className="text-xs text-muted">
           Authorized {fmtDate(auto.auth.authorizedAt)} · floor {auto.auth.floorUsd ? fmtUsd(auto.auth.floorUsd) : "walk-away price"} · ceiling {auto.auth.ceilingUsd ? fmtUsd(auto.auth.ceilingUsd) : "expected market price"} · {auto.auth.allowEstimateOnly ? "may bid on your estimate" : "waits for a firm quote"}{p.lastRunAt ? ` · last pass ${fmtDate(p.lastRunAt)}` : ""}
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RunControls itemId={id} />
           {p.phase !== "stopped" && p.phase !== "won" && p.phase !== "lost" && p.phase !== "expired" && (
-            <>
-              <Button onClick={() => actions.setAutoPaused(id, !auto.auth.paused)}>{auto.auth.paused ? "Resume" : "Pause"}</Button>
-              <Button variant="danger" onClick={() => { if (window.confirm("Stop autopilot for this bid? Anything already sent cannot be recalled.")) actions.stopAuto(id); }}>Stop</Button>
-            </>
+            <Button variant="danger" onClick={() => { if (window.confirm("Stop autopilot for THIS bid? Anything already sent cannot be recalled.")) actions.stopAuto(id); }}>Stop this bid</Button>
           )}
+          {(p.phase === "stopped" || p.phase === "expired") && <Button onClick={() => actions.restartAuto(id)}>Restart this bid</Button>}
         </div>
         {mine.length > 0 && (
           <details>

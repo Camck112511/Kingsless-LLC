@@ -66,6 +66,25 @@ const hashKey = (s: string): string => {
 
 const blankProgress = (): AutoBid["progress"] => ({ phase: "authorized", lastRunAt: null, summary: "", needs: [], notifiedKey: "", pageHash: "", subResearchAt: null, compsAt: null, pricing: null });
 
+function fromFederal(s: SubAwardee, opp: Opportunity, idSeed: string): Subcontractor {
+  return {
+    id: `sub-${idSeed}`,
+    name: s.name,
+    contact: s.uei ? `SAM.gov UEI: ${s.uei}` : "",
+    services: words(opp.title),
+    coverage: s.states,
+    licenses: [],
+    insuranceCoverageUsd: null,
+    insuranceCertOnFile: false,
+    bondingCapacityUsd: null,
+    certifications: [],
+    similarProjects: s.examples.filter((e) => e.description).map((e) => ({ description: `${e.description} (sub to ${e.prime || "a prime"})`, year: e.date ? Number(e.date.slice(0, 4)) : null, referenceVerified: false })),
+    capacityConfirmed: false,
+    willingToSubcontract: "unknown",
+    notes: `Found in USAspending subaward records: ${s.count} subaward(s) totalling $${Math.round(s.totalUsd).toLocaleString("en-US")}. No contact details in the record. Nothing verified: confirm license, insurance, capacity and willingness before relying on them.`,
+  };
+}
+
 function toSubcontractor(l: Extract<SubResearchResult, { subs: unknown }>["subs"][number], opp: Opportunity, idSeed: string): Subcontractor {
   return {
     id: `sub-${idSeed}`,
@@ -239,15 +258,28 @@ export async function runAutopilot(startState: AppState, deps: Deps, only?: { it
     // 3. Too few plausible subcontractors on file: research some (at most weekly).
     const world = () => ({ settings: working.settings, subcontractors: working.subcontractors, quotes: working.quotes.filter((q) => q.opportunityId === id), today });
     let a0 = analyze({ opportunity: cur.opportunity, inputs: cur.inputs }, world());
-    if (!staffingCheck(cur.opportunity, a0, working.subcontractors).ok && deps.aiEnabled && staleDays(progress.subResearchAt, today, RULES.autopilot.researchEveryDays)) {
-      const r = await deps.research(cur.opportunity, working.settings);
+    if (!staffingCheck(cur.opportunity, a0, working.subcontractors).ok && staleDays(progress.subResearchAt, today, RULES.autopilot.researchEveryDays)) {
       progress.subResearchAt = today;
-      if ("error" in r) event(id, "info", "Subcontractor research did not run", r.error);
-      else {
-        addSubs(r.subs.map((l) => toSubcontractor(l, cur.opportunity, hashKey(`${id}|${l.name}`))));
-        event(id, "info", `Found subcontractor candidates for ${opportunity.title}`, `${r.subs.length} added to your directory as unverified leads.`);
+      if (deps.aiEnabled) {
+        const r = await deps.research(cur.opportunity, working.settings);
+        if ("error" in r) event(id, "info", "Subcontractor research did not run", r.error);
+        else {
+          addSubs(r.subs.map((l) => toSubcontractor(l, cur.opportunity, hashKey(`${id}|${l.name}`))));
+          event(id, "info", `Found subcontractor candidates for ${opportunity.title}`, `${r.subs.length} added to your directory as unverified leads.`);
+        }
+        a0 = analyze({ opportunity: cur.opportunity, inputs: cur.inputs }, world());
       }
-      a0 = analyze({ opportunity: cur.opportunity, inputs: cur.inputs }, world());
+      // No AI (or it found too few): companies that primes have actually hired for similar federal work. Free, no key.
+      if (!staffingCheck(cur.opportunity, a0, working.subcontractors).ok) {
+        const st = cur.opportunity.location.state.length === 2 ? cur.opportunity.location.state.toUpperCase() : "";
+        const fed = await deps.subawards({ keywords: words(cur.opportunity.title), naics: cur.opportunity.naics ? [cur.opportunity.naics] : [], states: st ? [st] : [], yearsBack: 3, limit: 50 }).catch(() => [] as SubAwardee[]);
+        const local = fed.filter((s) => !st || s.states.includes(st)).slice(0, 6);
+        if (local.length > 0) {
+          addSubs(local.map((s) => fromFederal(s, cur.opportunity, hashKey(`${id}|${s.name}`))));
+          event(id, "info", `Found subcontractor candidates for ${opportunity.title}`, `${local.length} companies that primes hired for similar federal work${st ? ` in ${st}` : ""} were added to your directory as unverified leads.`);
+          a0 = analyze({ opportunity: cur.opportunity, inputs: cur.inputs }, world());
+        }
+      }
     }
 
     // 4. Choose the price.
@@ -269,6 +301,7 @@ export async function runAutopilot(startState: AppState, deps: Deps, only?: { it
     const pkg = buildBidPackage({ opp: cur.opportunity, analysis, inputs: cur.inputs, bid: { ...bid, auto: { auth, progress } }, settings: working.settings, today });
     const decision = decide({ item: { opportunity: cur.opportunity, inputs: cur.inputs }, bid: { ...bid, auto: { auth, progress } }, analysis, pkg, subs: working.subcontractors, emailConfigured: deps.emailEnabled, submissionsToday: submissionsToday(), discoveredEmail: discovered });
     const needs = priceNote && !decision.needs.includes(priceNote) && decision.action === "needs-you" ? [priceNote, ...decision.needs] : decision.needs;
+    progress.recipient = decision.recipient;
 
     switch (decision.action) {
       case "submit": {

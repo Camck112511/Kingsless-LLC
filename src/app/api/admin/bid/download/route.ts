@@ -1,6 +1,7 @@
 import { prepareBid } from "@/server/bid-context";
 import { adminGuard } from "@/server/auth";
-import { buildDocxFile, buildPacketPdf, buildZip, safeName } from "@/server/docs/package";
+import { bidEmailFor } from "@/engine";
+import { buildDocxFile, buildEml, buildPacketPdf, buildZip, safeName } from "@/server/docs/package";
 import { fail, noStore, readJson } from "@/server/http";
 import { BidDownloadRequestSchema } from "@/server/schemas";
 
@@ -12,13 +13,20 @@ export async function POST(request: Request) {
   if (denied) return denied;
   const body = await readJson(request, BidDownloadRequestSchema, 4_000_000);
   if ("error" in body) return body.error;
-  const { pkg, label } = prepareBid(body.data);
+  const { pkg, label, bid, opp, settings } = prepareBid(body.data);
   try {
     const file =
       body.data.format === "zip"
         ? await buildZip(pkg, label)
         : body.data.format === "pdf"
           ? await buildPacketPdf(pkg, label)
+          : body.data.format === "eml"
+            ? await (async () => {
+                const packet = await buildPacketPdf(pkg, label);
+                const mail = bidEmailFor(opp, settings);
+                const to = bid.auto?.progress.recipient || bid.auto?.auth.submissionEmail || bid.prep.submissionEmail || "";
+                return buildEml({ to, subject: mail.subject, text: mail.message, attachment: { filename: packet.filename, data: packet.data } });
+              })()
           : body.data.doc
             ? await buildDocxFile(pkg, body.data.doc, label)
             : null;

@@ -14,7 +14,8 @@
 import { useSyncExternalStore } from "react";
 import { autopilotRunApi, cloudGetApi, cloudPutApi, type CloudSnapshot } from "./api";
 import { applyPatches } from "./patches";
-import { applyServerPatches, getState, onCommit, replaceState } from "./store";
+import { watchEvents } from "./alerts";
+import { actions, applyServerPatches, getState, onCommit, replaceState } from "./store";
 import type { AppState, Patch } from "./types";
 
 export interface CloudStatus {
@@ -25,13 +26,16 @@ export interface CloudStatus {
   running: boolean;
   lastRunAt: string | null;
   lastRunMessage: string;
+  /** Keeping the screen awake so a console left open keeps working. */
+  keepAwake: boolean;
 }
 
 const REV_KEY = "kingsless.cloud.rev";
 const RUN_KEY = "kingsless.autopilot.lastRun";
-const AUTO_RUN_EVERY_MS = 30 * 60_000;
+const AUTO_RUN_EVERY_MS = 10 * 60_000;
+const WAKE_KEY = "kingsless.wakelock";
 
-let status: CloudStatus = { phase: "unknown", syncedAt: null, message: "", running: false, lastRunAt: null, lastRunMessage: "" };
+let status: CloudStatus = { phase: "unknown", syncedAt: null, message: "", running: false, lastRunAt: null, lastRunMessage: "", keepAwake: false };
 const subs = new Set<() => void>();
 const set = (p: Partial<CloudStatus>) => {
   status = { ...status, ...p };
@@ -176,11 +180,23 @@ export async function resolveConflict(keep: "cloud" | "browser"): Promise<void> 
   await push();
 }
 
-const hasActive = (s: AppState): boolean => s.items.some((i) => i.bid?.auto && !["stopped", "expired", "lost"].includes(i.bid.auto.progress.phase));
+const hasActive = (s: AppState): boolean => s.items.some((i) => i.bid?.auto && !i.bid.auto.auth.paused && !["stopped", "expired", "lost"].includes(i.bid.auto.progress.phase));
 
 /** Run the autopilot now, for every authorized bid or one. Returns a message for the owner. */
 export async function runAutopilotNow(opts: { itemId?: string; briefingOnly?: boolean } = {}): Promise<string> {
   if (status.running) return "Autopilot is already running.";
+  // Stop means stop. (Building the briefing for a win you recorded is allowed: it sends nothing to anyone.)
+  if (getState().autopilotPaused && !opts.briefingOnly) return "Autopilot is stopped. Press Start first.";
+  // Only one tab may run a pass at a time, or two tabs could both send the same bid.
+  const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+  if (locks) {
+    const result = await locks.request("kingsless-autopilot", { ifAvailable: true }, async (lock) => (lock ? runPass(opts) : "Another tab is already running autopilot."));
+    return result as string;
+  }
+  return runPass(opts);
+}
+
+async function runPass(opts: { itemId?: string; briefingOnly?: boolean }): Promise<string> {
   set({ running: true });
   try {
     let msg: string;
@@ -223,15 +239,84 @@ export function startCloud(): void {
   } catch {
     /* ignore */
   }
-  onCommit(() => schedulePush());
+  watchEvents(getState());
+  onCommit((s) => {
+    schedulePush();
+    watchEvents(s);
+  });
   window.addEventListener("focus", () => void poll());
   setInterval(() => void poll(), 60_000);
+  try {
+    if (window.localStorage.getItem(WAKE_KEY) === "1") void setKeepAwake(true);
+  } catch {
+    /* ignore */
+  }
+  // While Started and a console tab is open, check the authorized bids every 10 minutes.
+  const tick = () => {
+    const s = getState();
+    if (s.autopilotPaused || !hasActive(s) || status.running) return;
+    if (status.phase !== "on" && status.phase !== "off") return;
+    void runAutopilotNow();
+  };
+  setInterval(tick, AUTO_RUN_EVERY_MS);
   void init().then(() => {
-    // Catch up on anything that needed doing while the console was closed, but not more than twice an hour.
     const last = status.lastRunAt ? Date.parse(status.lastRunAt) : 0;
-    if ((status.phase === "on" || status.phase === "off") && hasActive(getState()) && Date.now() - last > AUTO_RUN_EVERY_MS) void runAutopilotNow();
+    if (Date.now() - last > AUTO_RUN_EVERY_MS) tick();
   });
 }
+
+/** Start autopilot and check right away. */
+export function startAutopilot(): void {
+  actions.setAutopilotOn(true);
+  void runAutopilotNow();
+}
+
+export function stopAutopilot(): void {
+  actions.setAutopilotOn(false);
+}
+
+/* --------------------------- keep the screen awake --------------------------- */
+
+let wake: WakeLockSentinel | null = null;
+
+async function acquire(): Promise<void> {
+  try {
+    if (!wake && "wakeLock" in navigator && document.visibilityState === "visible") {
+      wake = await navigator.wakeLock.request("screen");
+      wake.addEventListener("release", () => {
+        wake = null;
+      });
+    }
+  } catch {
+    /* denied or unsupported: the console simply sleeps with the device */
+  }
+}
+
+/** Ask the device not to sleep while the console is open, so a left-open console keeps working. */
+export async function setKeepAwake(on: boolean): Promise<void> {
+  try {
+    window.localStorage.setItem(WAKE_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  set({ keepAwake: on });
+  if (on) {
+    await acquire();
+    document.addEventListener("visibilitychange", onVisible);
+  } else {
+    document.removeEventListener("visibilitychange", onVisible);
+    try {
+      await wake?.release();
+    } catch {
+      /* ignore */
+    }
+    wake = null;
+  }
+}
+
+const onVisible = () => {
+  if (status.keepAwake) void acquire();
+};
 
 const subscribe = (cb: () => void) => {
   subs.add(cb);

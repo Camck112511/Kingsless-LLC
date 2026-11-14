@@ -228,6 +228,7 @@ const AutoProgressSchema: z.ZodType<AutoProgress> = z.object({
   compsAt: z.string().max(40).nullable(),
   // Written only by the server, so shape-checked loosely: it is displayed, never fed back into the rules.
   pricing: z.custom<PriceChoice>((v) => typeof v === "object" && v !== null).nullable(),
+  recipient: z.string().max(320).nullable().optional(),
 });
 
 export const BidRecordSchema: z.ZodType<BidRecord> = z.object({
@@ -363,7 +364,7 @@ export const BidPlanRequestSchema = z.object({
 });
 
 export const BidDownloadRequestSchema = BidPlanRequestSchema.extend({
-  format: z.enum(["docx", "pdf", "zip"]),
+  format: z.enum(["docx", "pdf", "zip", "eml"]),
   doc: z.string().max(60).optional(),
 });
 

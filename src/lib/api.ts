@@ -149,7 +149,7 @@ export const bidSendApi = (s: AppState, id: string, mail: { to: string; subject:
   postJson<{ id: string; to: string; attachments: string[] }>("/api/admin/bid/send", { ...bidBody(s, id, mail.to), ...mail, confirm: "SEND" });
 
 /** Downloads a generated file. The browser saves it; nothing is sent anywhere. */
-export async function bidDownload(s: AppState, id: string, what: { format: "docx" | "pdf" | "zip"; doc?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function bidDownload(s: AppState, id: string, what: { format: "docx" | "pdf" | "zip" | "eml"; doc?: string }): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const res = await fetch("/api/admin/bid/download", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...bidBody(s, id), ...what }), credentials: "same-origin" });
     if (!res.ok) {

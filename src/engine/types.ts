@@ -621,6 +621,8 @@ export interface AutoProgress {
   subResearchAt: string | null;
   compsAt: string | null;
   pricing: PriceChoice | null;
+  /** Where the bid goes by email, when the listing (or the owner) gave an address. */
+  recipient?: string | null;
 }
 
 export interface AutoBid {
